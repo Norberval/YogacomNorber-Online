@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YôgacomNorber – Controle de Alunos</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&family=Tiro+Devanagari+Sanskrit&display=swap" rel="stylesheet">
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<style>
+:root {
+  --bg:#0f0e0c;--surface:#1a1815;--surface2:#232018;--border:#2e2a22;
+  --gold:#c9a84c;--gold-light:#e2c47a;--gold-dim:rgba(201,168,76,0.15);
+  --green:#4caf7a;--green-dim:rgba(76,175,122,0.15);
+  --red:#e05252;--red-dim:rgba(224,82,82,0.12);
+  --text:#f0ead8;--text-muted:#8a8070;--text-dim:#5a5448;
+  --personal:#7c5cbf;--online:#3a8fd4;--sabado:#d4823a;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+
+/* ── TELA DE SENHA ── */
+#lockScreen{
+  position:fixed;inset:0;z-index:9999;
+  background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+}
+.lock-box{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:40px 36px;
+  width:100%;max-width:340px;
+  display:flex;flex-direction:column;align-items:center;gap:20px;
+  box-shadow:0 24px 60px rgba(0,0,0,.6);
+}
+.lock-symbol{font-family:'Cormorant Garamond',serif;font-size:44px;color:var(--gold);line-height:1;}
+.lock-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--text);text-align:center;}
+.lock-sub{font-size:13px;color:var(--text-muted);text-align:center;margin-top:-10px;}
+.lock-input{
+  width:100%;padding:12px 16px;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:10px;color:var(--text);
+  font-family:'DM Sans',sans-serif;font-size:20px;
+  letter-spacing:6px;text-align:center;outline:none;
+  transition:border-color .2s;
+}
+.lock-input:focus{border-color:var(--gold);}
+.lock-input.erro{border-color:var(--red);animation:shake .3s;}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.lock-btn{
+  width:100%;padding:12px;border-radius:10px;border:none;
+  background:var(--gold);color:#1a1206;
+  font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;
+  cursor:pointer;transition:background .2s;
+}
+.lock-btn:hover{background:var(--gold-light);}
+.lock-erro{font-size:12px;color:var(--red);min-height:16px;}
+
+/* NAV TABS */
+.nav-tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;gap:4px;position:sticky;top:0;z-index:99;}
+.nav-tab{padding:14px 18px;font-size:13px;font-weight:500;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;background:none;border-top:none;border-left:none;border-right:none;font-family:'DM Sans',sans-serif;}
+.nav-tab:hover{color:var(--text);}
+.nav-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+
+/* HEADER */
+header{display:flex;align-items:center;justify-content:space-between;padding:18px 24px 14px;border-bottom:1px solid var(--border);background:var(--surface);}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-symbol{
+  font-family:'Tiro Devanagari Sanskrit',serif;
+  font-size:38px;
+  line-height:1;
+  background: linear-gradient(160deg,#f7e96a 0%,#d4a030 18%,#f0d055 35%,#8a5510 50%,#e2b840 64%,#7a4a08 78%,#f0c83a 100%);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+  filter:drop-shadow(0px 3px 6px rgba(60,25,0,0.85)) drop-shadow(0px 1px 2px rgba(255,200,60,0.3));
+  display:inline-block;
+}
+.logo-text{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;}
+.logo-text span{color:var(--gold);}
+
+/* OM na tela de senha */
+.lock-symbol{
+  font-family:'Tiro Devanagari Sanskrit',serif;
+  font-size:86px;
+  line-height:1;
+  background: linear-gradient(160deg,#f7e96a 0%,#d4a030 18%,#f0d055 35%,#8a5510 50%,#e2b840 64%,#7a4a08 78%,#f0c83a 100%);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+  filter:drop-shadow(0px 5px 12px rgba(40,15,0,0.9)) drop-shadow(0px 1px 3px rgba(255,210,60,0.35));
+  display:inline-block;
+}
+.header-actions{display:flex;gap:8px;}
+.btn{padding:8px 14px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;transition:all .2s;}
+.btn-primary{background:var(--gold);color:#1a1206;}
+.btn-primary:hover{background:var(--gold-light);}
+.btn-ghost{background:transparent;color:var(--text-muted);border:1px solid var(--border);}
+.btn-ghost:hover{border-color:var(--gold);color:var(--gold);}
+
+/* STATS */
+.stats-bar{display:flex;gap:1px;background:var(--border);border-bottom:1px solid var(--border);}
+.stat{flex:1;padding:12px 16px;background:var(--surface);display:flex;flex-direction:column;gap:2px;min-width:100px;}
+.stat-value{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--gold);}
+.stat-label{font-size:10px;color:var(--text-muted);letter-spacing:.05em;text-transform:uppercase;}
+
+/* FILTER */
+.filter-bar{padding:12px 24px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap;}
+.filter-chip{padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;transition:all .2s;}
+.filter-chip:hover,.filter-chip.active{border-color:var(--gold);color:var(--gold);background:var(--gold-dim);}
+.search-box{margin-left:auto;padding:6px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;width:190px;outline:none;}
+.search-box:focus{border-color:var(--gold);}
+.search-box::placeholder{color:var(--text-dim);}
+
+/* BOARD */
+.board{display:flex;gap:14px;padding:18px 24px;overflow-x:auto;min-height:calc(100vh - 260px);align-items:flex-start;}
+.column{min-width:290px;max-width:290px;background:var(--surface);border-radius:12px;border:1px solid var(--border);overflow:hidden;}
+.column-header{padding:12px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);}
+.col-title{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;flex:1;}
+.col-count{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:1px 8px;font-size:11px;color:var(--text-muted);}
+.col-personal{border-top:3px solid var(--personal);}
+.col-personal .col-title{color:var(--personal);}
+.col-tercas{border-top:3px solid var(--online);}
+.col-tercas .col-title{color:var(--online);}
+.col-sabados{border-top:3px solid var(--sabado);}
+.col-sabados .col-title{color:var(--sabado);}
+.column-cards{padding:10px;display:flex;flex-direction:column;gap:8px;}
+
+/* CARD */
+.card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;transition:all .2s;}
+.card:hover{border-color:var(--gold-light);transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.4);}
+.card-banner{height:50px;background:linear-gradient(135deg,#1a1206,#2a2010,#1a1206);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
+.card-banner::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(201,168,76,.08),transparent 70%);}
+.card-banner-text{
+  font-family:'Cormorant Garamond',serif;
+  font-size:14px;
+  font-weight:600;
+  letter-spacing:.05em;
+  position:relative;
+  background: linear-gradient(160deg,#f5e070 0%,#c9913a 20%,#e8c84a 38%,#a06820 52%,#e2b840 65%,#8a5510 78%,#f0d060 100%);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+  filter:drop-shadow(0px 2px 4px rgba(60,30,0,0.7));
+}
+.card-body{padding:10px 12px;}
+.card-status{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;}
+.status-active{background:var(--green-dim);color:var(--green);border:1px solid rgba(76,175,122,.3);}
+.status-ending{background:var(--red-dim);color:var(--red);border:1px solid rgba(224,82,82,.3);}
+.status-new{background:var(--gold-dim);color:var(--gold);border:1px solid rgba(201,168,76,.3);}
+.card-name{font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px;line-height:1.3;}
+.progress-wrap{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.progress-bar{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.progress-fill{height:100%;border-radius:2px;background:var(--green);transition:width .4s;}
+.progress-fill.warning{background:var(--gold);}
+.progress-fill.danger{background:var(--red);}
+.progress-text{font-size:11px;color:var(--text-muted);white-space:nowrap;}
+.card-value{font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:600;color:var(--gold);}
+.add-card-btn{margin:0 10px 10px;padding:7px;border-radius:8px;border:1px dashed var(--border);background:transparent;color:var(--text-dim);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;width:calc(100% - 20px);display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s;}
+.add-card-btn:hover{border-color:var(--gold);color:var(--gold);background:var(--gold-dim);}
+.empty-col{text-align:center;padding:24px 12px;color:var(--text-dim);font-size:12px;}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;visibility:hidden;transition:all .2s;}
+.modal-overlay.open{opacity:1;visibility:visible;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:540px;max-height:92vh;overflow-y:auto;transform:translateY(16px);transition:transform .2s;}
+.modal-overlay.open .modal{transform:translateY(0);}
+.modal-header{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.modal-title{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:600;flex:1;}
+.modal-close{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.modal-close:hover{border-color:var(--red);color:var(--red);}
+.modal-body{padding:18px 22px;display:flex;flex-direction:column;gap:14px;}
+.modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;}
+.form-group{display:flex;flex-direction:column;gap:5px;}
+.form-row{display:flex;gap:10px;}
+.form-row .form-group{flex:1;}
+label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);}
+input,select,textarea{padding:9px 11px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .2s;width:100%;}
+input:focus,select:focus,textarea:focus{border-color:var(--gold);}
+select option{background:var(--surface2);}
+textarea{resize:vertical;min-height:70px;}
+
+/* CHECKLIST in modal */
+.checklist-section{border-top:1px solid var(--border);padding-top:14px;}
+.checklist-title{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
+.aula-list{display:flex;flex-direction:column;gap:5px;}
+.aula-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:7px;}
+.aula-item input[type="checkbox"]{width:15px;height:15px;flex-shrink:0;accent-color:var(--green);cursor:pointer;}
+.aula-item-label{flex:1;font-size:13px;}
+.aula-item-label.done{text-decoration:line-through;color:var(--text-dim);}
+.aula-date-input{padding:4px 8px;font-size:11px;width:130px;flex-shrink:0;}
+
+/* DETAIL */
+.detail-banner{height:72px;background:linear-gradient(135deg,#1a1206,#2a2010,#1a1206);display:flex;align-items:center;justify-content:center;position:relative;}
+.detail-banner::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 40% 50%,rgba(201,168,76,.12),transparent 70%);}
+.detail-banner-text{
+  font-family:'Cormorant Garamond',serif;
+  font-size:20px;
+  position:relative;
+  background: linear-gradient(160deg,#f5e070 0%,#c9913a 20%,#e8c84a 38%,#a06820 52%,#e2b840 65%,#8a5510 78%,#f0d060 100%);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+  filter:drop-shadow(0px 2px 6px rgba(60,30,0,0.8));
+}
+.detail-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);}
+.detail-row:last-child{border-bottom:none;}
+.detail-key{font-size:12px;color:var(--text-muted);}
+.detail-val{font-size:13px;color:var(--text);font-weight:500;}
+.progress-detail{margin:10px 0;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;}
+.progress-header{display:flex;justify-content:space-between;margin-bottom:7px;font-size:12px;}
+.checklist-full{display:flex;flex-direction:column;gap:5px;margin-top:8px;}
+.check-row{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg);border-radius:7px;border:1px solid var(--border);}
+.check-row input[type="checkbox"]{accent-color:var(--green);width:14px;height:14px;cursor:pointer;}
+.check-row span{font-size:13px;flex:1;}
+.check-row span.done{text-decoration:line-through;color:var(--text-dim);}
+.check-date-badge{font-size:11px;color:var(--text-muted);background:var(--surface2);padding:2px 6px;border-radius:4px;white-space:nowrap;}
+.btn-delete{background:transparent;border:1px solid var(--border);color:var(--red);padding:7px 12px;border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;transition:all .2s;}
+.btn-delete:hover{background:var(--red-dim);border-color:var(--red);}
+.btn-edit{background:var(--gold-dim);border:1px solid rgba(201,168,76,.3);color:var(--gold);padding:7px 12px;border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;transition:all .2s;}
+.btn-edit:hover{background:rgba(201,168,76,.25);}
+.btn-renovar{background:var(--green-dim);border:1px solid rgba(76,175,122,.3);color:var(--green);padding:7px 12px;border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;transition:all .2s;}
+.btn-renovar:hover{background:rgba(76,175,122,.2);}
+
+/* ABAS INTERNAS DO DETALHE */
+.dtab{padding:10px 14px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;background:none;border:none;border-bottom:2px solid transparent;color:var(--text-muted);cursor:pointer;transition:all .2s;white-space:nowrap;}
+.dtab:hover{color:var(--text);}
+.dtab-active{color:var(--gold)!important;border-bottom-color:var(--gold)!important;}
+
+/* HISTÓRICO */
+.hist-block{margin-top:14px;}
+.hist-title{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+.hist-item{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;}
+.hist-item-header{display:flex;justify-content:space-between;margin-bottom:4px;}
+.hist-pacote{font-size:13px;font-weight:500;color:var(--text);}
+.hist-valor{font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--gold);}
+.hist-meta{font-size:11px;color:var(--text-muted);}
+.hist-progress{display:flex;align-items:center;gap:8px;margin-top:6px;}
+
+/* OM SVG inline */
+.om-svg-sm { width:36px; height:36px; display:inline-block; vertical-align:middle; }
+.om-svg-lg { width:80px; height:80px; display:inline-block; }
+.om-svg-md { width:28px; height:28px; display:inline-block; vertical-align:middle; }
+.relatorio-page{padding:20px 24px;display:none;}
+.relatorio-page.active{display:block;}
+.rel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
+.rel-title{font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--text);}
+.rel-controls{display:flex;gap:8px;}
+.mes-select{padding:7px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;}
+.mes-select:focus{border-color:var(--gold);}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:24px;}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:4px;}
+.kpi-value{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:600;color:var(--gold);}
+.kpi-label{font-size:11px;color:var(--text-muted);letter-spacing:.05em;text-transform:uppercase;}
+.kpi-sub{font-size:12px;color:var(--text-dim);margin-top:2px;}
+.rel-section-title{font-size:12px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;}
+.rel-table{width:100%;border-collapse:collapse;margin-bottom:24px;}
+.rel-table th{text-align:left;padding:8px 12px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);border-bottom:1px solid var(--border);}
+.rel-table td{padding:10px 12px;font-size:13px;border-bottom:1px solid var(--border);}
+.rel-table tr:last-child td{border-bottom:none;}
+.rel-table tr:hover td{background:var(--surface2);}
+.tipo-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;}
+.tipo-personal{background:rgba(124,92,191,.15);color:#a07de8;}
+.tipo-tercas{background:rgba(58,143,212,.15);color:#6ab3e8;}
+.tipo-sabados{background:rgba(212,130,58,.15);color:#e8a06a;}
+.bar-chart{margin-bottom:24px;}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.bar-name{font-size:12px;color:var(--text-muted);width:120px;flex-shrink:0;text-align:right;}
+.bar-wrap{flex:1;height:22px;background:var(--surface2);border-radius:4px;overflow:hidden;}
+.bar-fill{height:100%;background:var(--gold);border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;font-size:11px;font-weight:600;color:#1a1206;transition:width .5s;}
+.bar-total{font-size:12px;color:var(--gold);font-family:'Cormorant Garamond',serif;font-size:15px;width:70px;}
+.no-data{text-align:center;padding:40px;color:var(--text-dim);font-size:14px;}
+
+/* RENOVAR MODAL */
+.renov-info{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;color:var(--text-muted);line-height:1.6;}
+
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+@media(max-width:600px){
+  header{padding:12px 14px;}
+  .board{padding:12px 8px;gap:10px;}
+  .column{min-width:260px;max-width:260px;}
+  .stats-bar{overflow-x:auto;}
+  .stat{min-width:90px;}
+  .filter-bar{padding:10px 14px;}
+  .search-box{width:130px;}
+  .relatorio-page{padding:14px;}
+  .cards-grid{grid-template-columns:1fr 1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- TELA DE SENHA -->
+<div id="lockScreen">
+  <div class="lock-box">
+    <div class="lock-symbol">ॐ</div>
+    <div class="lock-title">YôgacomNorber</div>
+    <div class="lock-sub">Digite a senha para continuar</div>
+    <input class="lock-input" type="password" id="lockInput" maxlength="10" placeholder="••••••" onkeydown="if(event.key==='Enter')verificarSenha()">
+    <div class="lock-erro" id="lockErro"></div>
+    <button class="lock-btn" onclick="verificarSenha()">Entrar</button>
+  </div>
+</div>
+
+<header>
+  <div class="logo">
+    <div class="logo-symbol">ॐ</div>
+    <div class="logo-text">Yôga<span>com</span>Norber</div>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-ghost" onclick="exportData()">↓ Backup</button>
+    <button class="btn btn-primary" onclick="openNewModal()">+ Novo aluno</button>
+  </div>
+</header>
+
+<div class="nav-tabs">
+  <button class="nav-tab active" onclick="showTab('board',this)">📋 Alunos</button>
+  <button class="nav-tab" onclick="showTab('relatorio',this)">📊 Relatório financeiro</button>
+</div>
+
+<!-- BOARD TAB -->
+<div id="tab-board">
+  <div class="stats-bar">
+    <div class="stat"><div class="stat-value" id="statTotal">0</div><div class="stat-label">Total alunos</div></div>
+    <div class="stat"><div class="stat-value" id="statPersonal">0</div><div class="stat-label">Personal</div></div>
+    <div class="stat"><div class="stat-value" id="statTercas">0</div><div class="stat-label">Terças/quin.</div></div>
+    <div class="stat"><div class="stat-value" id="statSabados">0</div><div class="stat-label">Sábados</div></div>
+    <div class="stat"><div class="stat-value" id="statReceita">R$0</div><div class="stat-label">Receita ativa</div></div>
+  </div>
+
+  <div class="filter-bar">
+    <span style="font-size:12px;color:var(--text-muted);margin-right:2px;">Filtrar:</span>
+    <button class="filter-chip active" onclick="setFilter('todos',this)">Todos</button>
+    <button class="filter-chip" onclick="setFilter('ativo',this)">Ativo</button>
+    <button class="filter-chip" onclick="setFilter('encerrando',this)">Encerrando</button>
+    <button class="filter-chip" onclick="setFilter('novo',this)">Novo</button>
+    <input class="search-box" type="text" placeholder="🔍 Buscar aluno…" id="searchBox" oninput="renderAll()">
+  </div>
+
+  <div class="board" id="board"></div>
+</div>
+
+<!-- RELATÓRIO TAB -->
+<div id="tab-relatorio" class="relatorio-page">
+  <div class="rel-header">
+    <div class="rel-title">Relatório Financeiro</div>
+    <div class="rel-controls">
+      <select class="mes-select" id="relMes" onchange="renderRelatorio()"></select>
+      <select class="mes-select" id="relAno" onchange="renderRelatorio()"></select>
+    </div>
+  </div>
+  <div id="relatorioBody"></div>
+</div>
+
+<!-- ══════════ MODAL NOVO/EDITAR ══════════ -->
+<div class="modal-overlay" id="newModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Novo aluno</div>
+      <button class="modal-close" onclick="closeNewModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Nome completo</label>
+        <input type="text" id="f_nome" placeholder="Ex: Maria Tereza Gatto">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Tipo de aula</label>
+          <select id="f_tipo" onchange="onTipoChange(this)">
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="f_status">
+            <option value="ativo">Pacote ativo</option>
+            <option value="encerrando">Encerrando</option>
+            <option value="novo">Novo</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Qtd. aulas no pacote</label>
+          <input type="number" id="f_qtdAulas" min="1" max="200" value="8" onchange="gerarAulas()">
+        </div>
+        <div class="form-group">
+          <label>Valor pago (R$)</label>
+          <input type="number" id="f_valor" min="0" step="10" placeholder="350">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Data do pagamento</label>
+          <input type="date" id="f_dataPag">
+        </div>
+        <div class="form-group">
+          <label>Número do pacote</label>
+          <input type="number" id="f_numPacote" min="1" value="1">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Observações</label>
+        <textarea id="f_obs" placeholder="Iniciou em… alergias, preferências…"></textarea>
+      </div>
+      <div class="checklist-section">
+        <div class="checklist-title">
+          <span>✅ Aulas do pacote</span>
+          <button class="btn btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="gerarAulas()">Regenerar</button>
+        </div>
+        <div class="aula-list" id="aulaList"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeNewModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarAluno()">Salvar aluno</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL DETALHE ══════════ -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal">
+    <div class="detail-banner">
+      <div class="detail-banner-text">ॐ YôgacomNorber</div>
+    </div>
+    <div class="modal-header">
+      <div class="modal-title" id="detail_nome">–</div>
+      <button class="modal-close" onclick="closeDetail()">×</button>
+    </div>
+    <div class="modal-body" id="detailBody"></div>
+    <div class="modal-footer">
+      <button class="btn-delete" onclick="deletarAluno()">🗑 Excluir</button>
+      <button class="btn-renovar" onclick="abrirRenovar()">🔄 Renovar pacote</button>
+      <button class="btn-edit" onclick="editarAluno()">✏️ Editar</button>
+      <button class="btn btn-primary" onclick="closeDetail()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL CONFIRMAÇÃO ══════════ -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal" style="max-width:360px;">
+    <div class="modal-body" style="padding:24px;">
+      <div style="font-size:15px;line-height:1.5;color:var(--text);" id="confirmMsg"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="fecharConfirm()">Cancelar</button>
+      <button class="btn-delete" id="confirmOkBtn" style="padding:8px 16px;">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL RENOVAR ══════════ -->
+<div class="modal-overlay" id="renovarModal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <div class="modal-title">🔄 Renovar pacote</div>
+      <button class="modal-close" onclick="closeRenovar()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="renov-info" id="renovInfo"></div>
+      <div class="form-row" style="margin-top:4px;">
+        <div class="form-group">
+          <label>Qtd. aulas novo pacote</label>
+          <input type="number" id="rv_qtd" min="1" max="200" value="8">
+        </div>
+        <div class="form-group">
+          <label>Novo valor (R$)</label>
+          <input type="number" id="rv_valor" min="0" step="10">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Data do pagamento</label>
+        <input type="date" id="rv_data">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeRenovar()">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarRenovar()">Confirmar renovação</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────── CONFIRMAÇÃO ───────────────
+let _confirmCallback = null;
+function confirmar(msg, callback){
+  document.getElementById('confirmMsg').textContent = msg;
+  _confirmCallback = callback;
+  document.getElementById('confirmModal').classList.add('open');
+  document.getElementById('confirmOkBtn').onclick = ()=>{ fecharConfirm(); callback(); };
+}
+function fecharConfirm(){
+  document.getElementById('confirmModal').classList.remove('open');
+  _confirmCallback = null;
+}
+
+// ─────────────── SÍMBOLO OM SVG ───────────────
+// Traçado fiel à foto: corpo "3" à esquerda, grande curva "O" à direita,
+// cauda longa embaixo, ponto acima e semicírculo curvado no topo
+function omSVG(size){
+  const s = size || 'sm';
+  const cls = `om-svg-${s}`;
+  return `<svg class="${cls}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="omGold${s}" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%"   stop-color="#f7e96a"/>
+      <stop offset="15%"  stop-color="#d4a030"/>
+      <stop offset="32%"  stop-color="#f0d055"/>
+      <stop offset="50%"  stop-color="#8a5510"/>
+      <stop offset="65%"  stop-color="#e2b840"/>
+      <stop offset="80%"  stop-color="#7a4a08"/>
+      <stop offset="100%" stop-color="#f0c83a"/>
+    </linearGradient>
+    <filter id="omShadow${s}">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="rgba(40,18,0,0.85)"/>
+      <feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="rgba(255,200,80,0.25)"/>
+    </filter>
+  </defs>
+  <g fill="url(#omGold${s})" filter="url(#omShadow${s})">
+    <!-- Corpo principal: número "3" estilizado à esquerda -->
+    <path d="
+      M 38 18
+      C 50 14, 64 18, 66 28
+      C 68 36, 60 42, 52 43
+      C 60 44, 70 50, 68 60
+      C 66 72, 50 78, 36 72
+      C 30 69, 26 64, 28 58
+      C 29 54, 33 52, 37 54
+      C 34 57, 35 63, 42 65
+      C 52 68, 60 62, 58 55
+      C 56 48, 46 46, 40 47
+      C 36 47, 34 44, 36 41
+      C 38 38, 46 38, 50 36
+      C 56 33, 58 27, 52 23
+      C 46 19, 38 22, 36 27
+      C 34 31, 36 34, 39 34
+      C 36 34, 32 31, 33 27
+      C 34 22, 36 18, 38 18 Z
+    "/>
+    <!-- Cauda longa embaixo à esquerda -->
+    <path d="
+      M 30 70
+      C 22 76, 14 88, 22 96
+      C 26 100, 32 98, 34 94
+      C 36 90, 32 86, 28 88
+      C 30 84, 36 82, 34 76
+      C 33 73, 31 71, 30 70 Z
+    "/>
+    <!-- Grande "O" à direita — corpo redondo -->
+    <path d="
+      M 72 30
+      C 88 30, 96 42, 94 56
+      C 92 70, 80 80, 66 78
+      C 52 76, 44 64, 46 52
+      C 48 40, 58 30, 72 30 Z
+      M 72 38
+      C 62 38, 55 46, 55 55
+      C 55 64, 62 72, 72 72
+      C 82 72, 89 64, 88 55
+      C 87 46, 82 38, 72 38 Z
+    " fill-rule="evenodd"/>
+    <!-- Ponto acima à direita -->
+    <circle cx="80" cy="14" r="5"/>
+    <!-- Semicírculo / arco curvado no topo -->
+    <path d="
+      M 42 10
+      C 48 2, 68 2, 74 10
+      C 70 8, 50 7, 46 12
+      C 45 11, 43 10, 42 10 Z
+    "/>
+    <!-- Pequena curva que liga o arco ao corpo -->
+    <path d="
+      M 74 10
+      C 78 14, 80 18, 80 20
+      C 79 18, 77 14, 74 10 Z
+    " stroke="url(#omGold${s})" stroke-width="2" fill="url(#omGold${s})"/>
+  </g>
+</svg>`;
+}
+
+// ─────────────── SENHA ───────────────
+function verificarSenha(){
+  const input=document.getElementById('lockInput');
+  const erro=document.getElementById('lockErro');
+  if(input.value==='314869'){
+    document.getElementById('lockScreen').style.display='none';
+    input.value='';
+  } else {
+    erro.textContent='Senha incorreta. Tente novamente.';
+    input.classList.add('erro');
+    input.value='';
+    setTimeout(()=>{input.classList.remove('erro');erro.textContent='';},1000);
+  }
+}
+window.addEventListener('load',()=>{
+  document.getElementById('tab-relatorio').style.display='none';
+  document.getElementById('lockInput').focus();
+  initFirebase();
+  initRelatorioControls();
+  carregarDados();
+});
+
+// ─────────────── QUADROS ───────────────
+const QUADROS_PADRAO = [
+  {id:'personal', nome:'Personal',          icone:'👤'},
+  {id:'tercas',   nome:'Terças & Quintas',   icone:'📅'},
+  {id:'sabados',  nome:'Sábados',            icone:'🗓️'},
+];
+
+let quadros = [...QUADROS_PADRAO];
+
+function saveQuadros(){ saveQuadrosDB(); }
+
+function atualizarSelectTipo(valorAtual){
+  const sel = document.getElementById('f_tipo');
+  sel.innerHTML = '';
+  quadros.forEach(q=>{
+    const opt = document.createElement('option');
+    opt.value = q.id;
+    opt.textContent = q.nome;
+    sel.appendChild(opt);
+  });
+  const sep = document.createElement('option');
+  sep.disabled = true;
+  sep.textContent = '──────────';
+  sel.appendChild(sep);
+  const novo = document.createElement('option');
+  novo.value = '__novo__';
+  novo.textContent = '＋ Criar novo quadro…';
+  sel.appendChild(novo);
+  if(valorAtual) sel.value = valorAtual;
+}
+
+function onTipoChange(sel){
+  if(sel.value === '__novo__'){
+    sel.value = quadros[0].id; // volta ao primeiro enquanto abre o modal
+    abrirNovoQuadro();
+  }
+}
+
+// Modal de novo quadro — inline simples
+function abrirNovoQuadro(){
+  const nome = prompt('Nome do novo quadro:\n(Ex: Segundas e Quartas)');
+  if(!nome || !nome.trim()) return;
+  const icones = ['📅','🗓️','🌅','🌙','⭐','🔵','🟢','🟠','🟣'];
+  const icone = icones[quadros.length % icones.length];
+  const cor = PALETA[(quadros.length - 3) % PALETA.length];
+  const id = 'q_' + nome.trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'') + '_' + Date.now().toString(36);
+  quadros.push({id, nome:nome.trim(), icone, cor});
+  saveQuadros();
+  renderBoard();
+  renderAll();
+  atualizarSelectTipo(id);
+  // abre o modal de novo aluno já nesse quadro
+  openNewModal(id);
+}
+
+function excluirQuadro(id){
+  const q = quadros.find(x=>x.id===id);
+  const nAlunos = alunos.filter(a=>a.tipo===id).length;
+  const aviso = nAlunos > 0 ? ` (há ${nAlunos} aluno(s) neste quadro que ficará sem quadro)` : '';
+  confirmar(
+    `Excluir o quadro "${q.nome}"?${aviso}`,
+    ()=>{ quadros=quadros.filter(x=>x.id!==id); saveQuadros(); renderBoard(); renderAll(); }
+  );
+}
+
+// ─────────────── FIREBASE ───────────────
+let db;
+function initFirebase(){
+  const firebaseConfig = {
+    apiKey: "AIzaSyCvsAHEbovgLkNLpDeymU6sfu1YFlmXjMc",
+    authDomain: "yogacomnorber-online.firebaseapp.com",
+    projectId: "yogacomnorber-online",
+    storageBucket: "yogacomnorber-online.firebasestorage.app",
+    messagingSenderId: "263374068699",
+    appId: "1:263374068699:web:8c0f07ee12d69dcbd7e5fe"
+  };
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+}
+
+// ─────────────── DATA ───────────────
+let alunos = [];
+let editingId = null, viewingId = null, renovandoId = null;
+let activeFilter = 'todos';
+
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+// Salva um aluno no Firestore
+async function save(aluno){
+  if(!aluno) return;
+  await db.collection('alunos').doc(aluno.id).set(aluno);
+}
+
+// Salva os quadros no Firestore
+async function saveQuadrosDB(){
+  await db.collection('config').doc('quadros').set({ lista: quadros });
+}
+
+// Carrega todos os dados do Firestore
+async function carregarDados(){
+  mostrarCarregando(true);
+  try {
+    // Carregar quadros
+    const qDoc = await db.collection('config').doc('quadros').get();
+    if(qDoc.exists && qDoc.data().lista){
+      quadros = qDoc.data().lista;
+    }
+
+    // Carregar alunos
+    const snap = await db.collection('alunos').get();
+    alunos = snap.docs.map(d => d.data());
+
+    // Se banco vazio, inserir dados de exemplo
+    if(alunos.length === 0){
+      const exemplo = getDadosExemplo();
+      for(const a of exemplo){
+        await db.collection('alunos').doc(a.id).set(a);
+      }
+      alunos = exemplo;
+    }
+  } catch(e){
+    console.error('Erro ao carregar Firebase:', e);
+    alert('Erro ao conectar com o banco de dados. Verifique sua conexão.');
+  }
+  mostrarCarregando(false);
+  renderBoard();
+  renderAll();
+}
+
+function mostrarCarregando(sim){
+  let el = document.getElementById('loadingOverlay');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'loadingOverlay';
+    el.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(15,14,12,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;';
+    el.innerHTML = `<div style="font-family:'Tiro Devanagari Sanskrit',serif;font-size:70px;line-height:1;background:linear-gradient(160deg,#f7e96a 0%,#d4a030 18%,#f0d055 35%,#8a5510 50%,#e2b840 64%,#7a4a08 78%,#f0c83a 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0px 4px 10px rgba(40,15,0,0.9));display:inline-block;">ॐ</div>
+      <div style="font-size:14px;color:#8a8070;margin-top:8px;">Carregando dados da nuvem…</div>`;
+    document.body.appendChild(el);
+  }
+  el.style.display = sim ? 'flex' : 'none';
+}
+
+function getDadosExemplo(){
+  return [
+    { id: uid(), nome:'Maria Tereza Gatto', tipo:'tercas', status:'ativo', qtdAulas:8, valor:350, dataPag:'2026-03-12', numPacote:5,
+      obs:'Iniciou as práticas on-line com o Prof. Norber em 31-03-2025.',
+      historico:[
+        {numPacote:1,qtdAulas:8,valor:280,dataPag:'2025-03-31',aulasConcluidas:8,aulas:Array.from({length:8},(_,i)=>({label:`Aula ${i+1}`,done:true,date:''}))},
+        {numPacote:2,qtdAulas:8,valor:300,dataPag:'2025-06-10',aulasConcluidas:8,aulas:Array.from({length:8},(_,i)=>({label:`Aula ${i+1}`,done:true,date:''}))},
+        {numPacote:3,qtdAulas:8,valor:320,dataPag:'2025-09-01',aulasConcluidas:8,aulas:Array.from({length:8},(_,i)=>({label:`Aula ${i+1}`,done:true,date:''}))},
+        {numPacote:4,qtdAulas:8,valor:350,dataPag:'2025-12-05',aulasConcluidas:8,aulas:Array.from({length:8},(_,i)=>({label:`Aula ${i+1}`,done:true,date:''}))},
+      ],
+      aulas:[
+        {label:'Aula 1',done:true,date:'2026-03-17'},{label:'Aula 2',done:true,date:'2026-03-19'},
+        {label:'Aula 3',done:true,date:'2026-03-24'},{label:'Aula 4',done:true,date:'2026-03-26'},
+        {label:'Aula 5',done:true,date:'2026-03-31'},{label:'Aula 6',done:false,date:''},
+        {label:'Aula 7',done:false,date:''},{label:'Aula 8',done:false,date:''},
+      ]},
+    { id:uid(), nome:'Lorena Pessoa', tipo:'personal', status:'ativo', qtdAulas:40, valor:120, dataPag:'2026-01-01', numPacote:1,
+      obs:'Hora/Aula.', historico:[],
+      aulas:Array.from({length:40},(_,i)=>({label:`Aula ${i+1}`,done:true,date:''}))},
+    { id:uid(), nome:'Marcos Sanchez', tipo:'personal', status:'ativo', qtdAulas:4, valor:200, dataPag:'2026-03-01', numPacote:1,
+      obs:'', historico:[],
+      aulas:Array.from({length:4},(_,i)=>({label:`Aula ${i+1}`,done:false,date:''}))},
+    { id:uid(), nome:'Paula F. Brandão', tipo:'sabados', status:'encerrando', qtdAulas:4, valor:150, dataPag:'2026-02-15', numPacote:4,
+      obs:'', historico:[
+        {numPacote:1,qtdAulas:4,valor:130,dataPag:'2025-06-01',aulasConcluidas:4,aulas:[]},
+        {numPacote:2,qtdAulas:4,valor:140,dataPag:'2025-09-01',aulasConcluidas:4,aulas:[]},
+        {numPacote:3,qtdAulas:4,valor:150,dataPag:'2025-12-01',aulasConcluidas:4,aulas:[]},
+      ],
+      aulas:Array.from({length:20},(_,i)=>({label:`Aula ${i+1}`,done:i<19,date:''}))},
+    { id:uid(), nome:'Gabriela Hendges Oliveira', tipo:'sabados', status:'ativo', qtdAulas:4, valor:150, dataPag:'2026-03-20', numPacote:1,
+      obs:'', historico:[],
+      aulas:Array.from({length:4},(_,i)=>({label:`Aula ${i+1}`,done:false,date:''}))},
+    { id:uid(), nome:'Sheila', tipo:'tercas', status:'ativo', qtdAulas:4, valor:200, dataPag:'2026-03-15', numPacote:1,
+      obs:'', historico:[],
+      aulas:Array.from({length:4},(_,i)=>({label:`Aula ${i+1}`,done:false,date:''}))},
+  ];
+}
+
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+
+// ─────────────── TABS ───────────────
+function showTab(tab, el){
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-board').style.display = tab==='board'?'block':'none';
+  document.getElementById('tab-relatorio').style.display = tab==='relatorio'?'block':'none';
+  if(tab==='relatorio') renderRelatorio();
+}
+
+// ─────────────── RENDER BOARD ───────────────
+// Cores fixas para os quadros fixos, paleta para os novos
+const CORES_FIXAS = {personal:'#7c5cbf', tercas:'#3a8fd4', sabados:'#d4823a'};
+const PALETA = ['#4caf7a','#e05252','#c9a84c','#5bbfbf','#bf5b9a','#7c9abf','#bf7c5b'];
+
+function corDoQuadro(tipo){
+  if(CORES_FIXAS[tipo]) return CORES_FIXAS[tipo];
+  const q = quadros.find(q=>q.id===tipo);
+  return q ? q.cor : '#8a8070';
+}
+
+function renderBoard(){
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+
+  quadros.forEach(q=>{
+    const cor = corDoQuadro(q.id);
+    const col = document.createElement('div');
+    col.className = 'column';
+    col.style.borderTop = `3px solid ${cor}`;
+    col.id = 'col-'+q.id;
+
+    const isFixo = ['personal','tercas','sabados'].includes(q.id);
+    const deleteBtnHtml = isFixo ? '' :
+      `<button onclick="excluirQuadro('${q.id}')" title="Excluir quadro"
+        style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;padding:2px 4px;line-height:1;"
+        onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-dim)'">✕</button>`;
+
+    col.innerHTML = `
+      <div class="column-header">
+        <span style="font-size:15px;">${q.icone||'📅'}</span>
+        <span class="col-title" style="color:${cor};">${q.nome}</span>
+        <span class="col-count" id="count-${q.id}">0</span>
+        ${deleteBtnHtml}
+      </div>
+      <div class="column-cards" id="cards-${q.id}"></div>
+      <button class="add-card-btn" onclick="openNewModal('${q.id}')">＋ Adicionar</button>`;
+    board.appendChild(col);
+  });
+
+  // botão "＋ Novo quadro" no final
+  const addCol = document.createElement('div');
+  addCol.style.cssText = 'min-width:220px;display:flex;align-items:flex-start;padding-top:4px;';
+  addCol.innerHTML = `
+    <button onclick="abrirNovoQuadro()"
+      style="width:100%;padding:12px 16px;border-radius:12px;border:2px dashed var(--border);
+             background:transparent;color:var(--text-muted);font-family:'DM Sans',sans-serif;
+             font-size:13px;cursor:pointer;transition:all .2s;text-align:left;"
+      onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'"
+      onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">
+      ＋ Novo quadro
+    </button>`;
+  board.appendChild(addCol);
+}
+
+function renderAll(){
+  const search = document.getElementById('searchBox').value.toLowerCase();
+
+  // agrupar alunos por quadro
+  const cols = {};
+  quadros.forEach(q=>cols[q.id]=[]);
+
+  alunos.forEach(a=>{
+    if(search && !a.nome.toLowerCase().includes(search)) return;
+    if(activeFilter!=='todos' && a.status!==activeFilter) return;
+    if(cols[a.tipo]!==undefined) cols[a.tipo].push(a);
+  });
+
+  quadros.forEach(q=>{
+    const el = document.getElementById('cards-'+q.id);
+    if(!el) return;
+    el.innerHTML='';
+    if(!cols[q.id].length) el.innerHTML='<div class="empty-col">Nenhum aluno aqui</div>';
+    else cols[q.id].forEach(a=>el.appendChild(buildCard(a)));
+    const cnt = document.getElementById('count-'+q.id);
+    if(cnt) cnt.textContent = cols[q.id].length;
+  });
+
+  // stats
+  document.getElementById('statTotal').textContent=alunos.length;
+  document.getElementById('statPersonal').textContent=alunos.filter(a=>a.tipo==='personal').length;
+  document.getElementById('statTercas').textContent=alunos.filter(a=>a.tipo==='tercas').length;
+  document.getElementById('statSabados').textContent=alunos.filter(a=>a.tipo==='sabados').length;
+  const rec=alunos.filter(a=>a.status==='ativo').reduce((s,a)=>s+(a.valor||0),0);
+  document.getElementById('statReceita').textContent='R$'+rec.toLocaleString('pt-BR');
+}
+
+function buildCard(a){
+  const done=a.aulas.filter(x=>x.done).length, total=a.aulas.length;
+  const pct=total?Math.round(done/total*100):0;
+  const fillClass=pct>=90?'danger':pct>=70?'warning':'';
+  const statusMap={ativo:'status-active',encerrando:'status-ending',novo:'status-new'};
+  const statusLabel={ativo:'● Pacote ativo',encerrando:'⚠ Encerrando',novo:'★ Novo'};
+  const div=document.createElement('div');
+  div.className='card';
+  div.onclick=()=>openDetail(a.id);
+  div.innerHTML=`
+    <div class="card-banner"><div class="card-banner-text">ॐ YôgacomNorber</div></div>
+    <div class="card-body">
+      <div class="card-status ${statusMap[a.status]}">${statusLabel[a.status]}</div>
+      <div class="card-name">${a.nome} – Pacote ${a.numPacote} (${a.qtdAulas} aulas)</div>
+      <div class="progress-wrap">
+        <div class="progress-bar"><div class="progress-fill ${fillClass}" style="width:${pct}%"></div></div>
+        <span class="progress-text">${done}/${total}</span>
+      </div>
+      <div class="card-value">R$: ${(a.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>
+    </div>`;
+  return div;
+}
+
+function setFilter(f,el){
+  activeFilter=f;
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  renderAll();
+}
+
+// ─────────────── MODAL NOVO/EDITAR ───────────────
+function openNewModal(tipo){
+  editingId=null;
+  document.getElementById('modalTitle').textContent='Novo aluno';
+  document.getElementById('f_nome').value='';
+  atualizarSelectTipo(tipo || quadros[0].id);
+  document.getElementById('f_status').value='ativo';
+  document.getElementById('f_qtdAulas').value=8;
+  document.getElementById('f_valor').value='';
+  document.getElementById('f_dataPag').value=new Date().toISOString().split('T')[0];
+  document.getElementById('f_numPacote').value=1;
+  document.getElementById('f_obs').value='';
+  gerarAulas();
+  document.getElementById('newModal').classList.add('open');
+}
+function closeNewModal(){document.getElementById('newModal').classList.remove('open');}
+
+function gerarAulas(){
+  const qtd=parseInt(document.getElementById('f_qtdAulas').value)||8;
+  const existing=editingId?(alunos.find(a=>a.id===editingId)?.aulas||[]):[];
+  const list=document.getElementById('aulaList');
+  list.innerHTML='';
+  for(let i=0;i<qtd;i++){
+    const ex=existing[i]||{done:false,date:''};
+    const div=document.createElement('div');
+    div.className='aula-item';
+    div.innerHTML=`
+      <input type="checkbox" id="ck_${i}" ${ex.done?'checked':''} onchange="this.nextElementSibling.className='aula-item-label'+(this.checked?' done':'')">
+      <span class="aula-item-label${ex.done?' done':''}">Aula ${i+1}</span>
+      <input type="date" class="aula-date-input" id="dt_${i}" value="${ex.date}">`;
+    list.appendChild(div);
+  }
+}
+
+async function salvarAluno(){
+  const nome=document.getElementById('f_nome').value.trim();
+  if(!nome){alert('Informe o nome do aluno.');return;}
+  const qtd=parseInt(document.getElementById('f_qtdAulas').value)||8;
+  const aulas=[];
+  for(let i=0;i<qtd;i++) aulas.push({label:`Aula ${i+1}`,done:document.getElementById(`ck_${i}`).checked,date:document.getElementById(`dt_${i}`).value});
+  const dados={nome,tipo:document.getElementById('f_tipo').value,status:document.getElementById('f_status').value,
+    qtdAulas:qtd,valor:parseFloat(document.getElementById('f_valor').value)||0,
+    dataPag:document.getElementById('f_dataPag').value,numPacote:parseInt(document.getElementById('f_numPacote').value)||1,
+    obs:document.getElementById('f_obs').value,aulas};
+  if(editingId){
+    const idx=alunos.findIndex(a=>a.id===editingId);
+    alunos[idx]={...alunos[idx],...dados};
+    await save(alunos[idx]);
+  } else {
+    const novo={id:uid(),historico:[],...dados};
+    alunos.push(novo);
+    await save(novo);
+  }
+  closeNewModal();renderAll();
+}
+
+// ─────────────── MODAL DETALHE ───────────────
+function openDetail(id){
+  viewingId=id;
+  const a=alunos.find(x=>x.id===id);
+  document.getElementById('detail_nome').textContent=a.nome;
+  const done=a.aulas.filter(x=>x.done).length, total=a.aulas.length;
+  const pct=total?Math.round(done/total*100):0;
+  const fillClass=pct>=90?'danger':pct>=70?'warning':'';
+  const tipoLabel={personal:'Personal',tercas:'Terças & Quintas',sabados:'Sábados'};
+  const statusLabel={ativo:'Pacote ativo',encerrando:'Encerrando',novo:'Novo'};
+
+  const hist=a.historico||[];
+
+  const checksHtml=a.aulas.map((au,i)=>`
+    <div class="check-row">
+      <input type="checkbox" ${au.done?'checked':''} onchange="toggleAula('${id}',${i},this.checked)">
+      <span class="${au.done?'done':''}">${au.label}</span>
+      ${au.date?`<span class="check-date-badge">📅 ${fmtDate(au.date)}</span>`
+        :`<input type="date" style="padding:3px 7px;font-size:11px;width:135px;" value="" onchange="setAulaDate('${id}',${i},this.value)">`}
+    </div>`).join('');
+
+  const histHtml = hist.length ? hist.slice().reverse().map((h,hi)=>{
+    const hIdx = hist.length - 1 - hi;
+    const aulasDoHist = h.aulas || [];
+    const aulasHtml = aulasDoHist.length ? aulasDoHist.map((au,ai)=>
+      `<div class="check-row">
+        <input type="checkbox" ${au.done?'checked':''} data-aluno="${id}" data-hIdx="${hIdx}" data-ai="${ai}" onchange="toggleHistAula(this)">
+        <span class="${au.done?'done':''}">${au.label}</span>
+        ${au.date
+          ? `<span class="check-date-badge" style="cursor:pointer;" onclick="editHistData(this,'${id}',${hIdx},${ai})">📅 ${fmtDate(au.date)}</span>`
+          : `<input type="date" style="padding:3px 7px;font-size:11px;width:135px;" value="" onchange="setHistAulaDate('${id}',${hIdx},${ai},this.value)">`}
+      </div>`).join('')
+    : `<div style="color:var(--text-dim);font-size:12px;padding:8px 0;">Aulas não registradas neste pacote.</div>`;
+
+    return `<div class="hist-item" id="histitem${hIdx}">
+      <div class="hist-item-header">
+        <span class="hist-pacote">Pacote ${h.numPacote} — ${h.qtdAulas} aulas</span>
+        <span class="hist-valor">R$ ${(h.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+      </div>
+      <div class="hist-meta">Pago em: ${h.dataPag?fmtDate(h.dataPag):'–'} &nbsp;|&nbsp; ${h.aulasConcluidas||0}/${h.qtdAulas} aulas concluídas</div>
+      <div class="hist-progress" style="margin-top:6px;display:flex;align-items:center;gap:8px;">
+        <div class="progress-bar" style="height:4px;flex:1;">
+          <div class="progress-fill" style="width:${Math.round((h.aulasConcluidas||0)/h.qtdAulas*100)}%"></div>
+        </div>
+        <button data-hid="hlist${hIdx}" onclick="toggleHistAulas(this)"
+          style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;white-space:nowrap;">
+          Ver aulas ▾
+        </button>
+        <button data-aluno="${id}" data-hIdx="${hIdx}" onclick="excluirHistorico(this)"
+          style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--red-dim);background:transparent;color:var(--red);cursor:pointer;white-space:nowrap;">
+          🗑
+        </button>
+      </div>
+      <div id="hlist${hIdx}" style="margin-top:8px;display:none;">
+        <div class="checklist-full">${aulasHtml}</div>
+      </div>
+    </div>`;
+  }).join('')
+  : `<div style="text-align:center;padding:30px;color:var(--text-dim);font-size:13px;">Nenhum pacote anterior ainda.<br>Após a primeira renovação o histórico aparece aqui.</div>`;
+
+  document.getElementById('detailBody').innerHTML=`
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin:-18px -22px 16px;padding:0 22px;">
+      <button onclick="detailTab('resumo',this)" class="dtab dtab-active">Resumo</button>
+      <button onclick="detailTab('aulas',this)" class="dtab">✅ Aulas (${done}/${total})</button>
+      <button onclick="detailTab('historico',this)" class="dtab">📦 Histórico (${hist.length})</button>
+    </div>
+    <div id="dpanel-resumo">
+      <div class="detail-row"><span class="detail-key">Tipo</span><span class="detail-val">${tipoLabel[a.tipo]}</span></div>
+      <div class="detail-row"><span class="detail-key">Status</span><span class="detail-val">${statusLabel[a.status]}</span></div>
+      <div class="detail-row"><span class="detail-key">Pacote nº</span><span class="detail-val">${a.numPacote}</span></div>
+      <div class="detail-row"><span class="detail-key">Valor</span><span class="detail-val" style="color:var(--gold);font-family:'Cormorant Garamond',serif;font-size:17px;">R$ ${(a.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span></div>
+      <div class="detail-row"><span class="detail-key">Data pagamento</span><span class="detail-val">${a.dataPag?fmtDate(a.dataPag):'–'}</span></div>
+      ${a.obs?`<div class="detail-row"><span class="detail-key">Obs</span><span class="detail-val" style="font-size:12px;color:var(--text-muted);max-width:260px;text-align:right;">${a.obs}</span></div>`:''}
+      <div class="progress-detail" style="margin-top:14px;">
+        <div class="progress-header"><span style="color:var(--text-muted)">Progresso</span><span style="color:var(--gold);font-weight:600;">${done}/${total} (${pct}%)</span></div>
+        <div class="progress-bar" style="height:6px;margin-top:6px;"><div class="progress-fill ${fillClass}" style="width:${pct}%"></div></div>
+      </div>
+    </div>
+    <div id="dpanel-aulas" style="display:none;"><div class="checklist-full">${checksHtml}</div></div>
+    <div id="dpanel-historico" style="display:none;"><div class="hist-block">${histHtml}</div></div>`;
+
+  document.getElementById('detailModal').classList.add('open');
+}
+
+function toggleHistAula(el){
+  const alunoId = el.getAttribute('data-aluno');
+  const hIdx    = parseInt(el.getAttribute('data-hIdx'));
+  const ai      = parseInt(el.getAttribute('data-ai'));
+  const a = alunos.find(x=>x.id===alunoId);
+  a.historico[hIdx].aulas[ai].done = el.checked;
+  if(el.checked && !a.historico[hIdx].aulas[ai].date)
+    a.historico[hIdx].aulas[ai].date = new Date().toISOString().split('T')[0];
+  a.historico[hIdx].aulasConcluidas = a.historico[hIdx].aulas.filter(x=>x.done).length;
+  save(a);
+  const span = el.nextElementSibling;
+  if(span) span.className = el.checked ? 'done' : '';
+}
+
+function setHistAulaDate(alunoId, hIdx, ai, val){
+  const a = alunos.find(x=>x.id===alunoId);
+  a.historico[hIdx].aulas[ai].date = val;
+  save(a);
+}
+
+function editHistData(badge, alunoId, hIdx, ai){
+  // troca o badge por um input de data para edição
+  const a = alunos.find(x=>x.id===alunoId);
+  const atual = a.historico[hIdx].aulas[ai].date || '';
+  const input = document.createElement('input');
+  input.type='date'; input.value=atual;
+  input.style.cssText='padding:3px 7px;font-size:11px;width:135px;background:var(--surface2);border:1px solid var(--gold);border-radius:6px;color:var(--text);';
+  input.onchange = function(){
+    a.historico[hIdx].aulas[ai].date = this.value;
+    save(a);
+    // volta ao badge
+    const novo = document.createElement('span');
+    novo.className='check-date-badge';
+    novo.style.cursor='pointer';
+    novo.textContent='📅 '+fmtDate(this.value);
+    novo.onclick = ()=>editHistData(novo, alunoId, hIdx, ai);
+    this.replaceWith(novo);
+  };
+  badge.replaceWith(input);
+  input.focus();
+}
+
+function excluirHistorico(btn){
+  const alunoId = btn.getAttribute('data-aluno');
+  const hIdx    = parseInt(btn.getAttribute('data-hIdx'));
+  const a = alunos.find(x=>x.id===alunoId);
+  const h = a.historico[hIdx];
+  confirmar(
+    `Excluir Pacote ${h.numPacote} (${h.qtdAulas} aulas, R$ ${(h.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}) do histórico?`,
+    async ()=>{
+      a.historico.splice(hIdx,1);
+      await save(a);
+      const item = document.getElementById('histitem'+hIdx);
+      if(item) item.remove();
+      const tabBtn = document.querySelector('.dtab:nth-child(3)');
+      if(tabBtn) tabBtn.textContent = `📦 Histórico (${a.historico.length})`;
+    }
+  );
+}
+
+function toggleHistAulas(btn){
+  const id = btn.getAttribute('data-hid');
+  const el = document.getElementById(id);
+  const aberto = el.style.display === 'block';
+  el.style.display = aberto ? 'none' : 'block';
+  btn.textContent = aberto ? 'Ver aulas ▾' : 'Fechar ▴';
+}
+
+function detailTab(tab, btn){
+  ['resumo','aulas','historico'].forEach(p=>{
+    document.getElementById('dpanel-'+p).style.display = p===tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('.dtab').forEach(b=>b.classList.remove('dtab-active'));
+  btn.classList.add('dtab-active');
+}
+
+function closeDetail(){document.getElementById('detailModal').classList.remove('open');renderBoard();renderAll();}
+
+function toggleAula(id,idx,val){
+  const a=alunos.find(x=>x.id===id);
+  a.aulas[idx].done=val;
+  if(val&&!a.aulas[idx].date) a.aulas[idx].date=new Date().toISOString().split('T')[0];
+  save(a);
+}
+function setAulaDate(id,idx,val){const a=alunos.find(x=>x.id===id);a.aulas[idx].date=val;save(a);}
+function deletarAluno(){
+  confirmar(
+    `Excluir este aluno permanentemente?`,
+    async ()=>{
+      await db.collection('alunos').doc(viewingId).delete();
+      alunos=alunos.filter(a=>a.id!==viewingId);
+      closeDetail();
+    }
+  );
+}
+function editarAluno(){
+  closeDetail();editingId=viewingId;
+  const a=alunos.find(x=>x.id===editingId);
+  document.getElementById('modalTitle').textContent='Editar aluno';
+  document.getElementById('f_nome').value=a.nome;
+  atualizarSelectTipo(a.tipo);
+  document.getElementById('f_status').value=a.status;
+  document.getElementById('f_qtdAulas').value=a.qtdAulas;
+  document.getElementById('f_valor').value=a.valor;
+  document.getElementById('f_dataPag').value=a.dataPag;
+  document.getElementById('f_numPacote').value=a.numPacote;
+  document.getElementById('f_obs').value=a.obs;
+  gerarAulas();
+  document.getElementById('newModal').classList.add('open');
+}
+
+// ─────────────── RENOVAR PACOTE ───────────────
+function abrirRenovar(){
+  renovandoId=viewingId;
+  const a=alunos.find(x=>x.id===renovandoId);
+  const done=a.aulas.filter(x=>x.done).length;
+  document.getElementById('renovInfo').innerHTML=
+    `<b>${a.nome}</b><br>Pacote atual: nº ${a.numPacote} — ${done}/${a.aulas.length} aulas concluídas<br>
+     Ao confirmar, o pacote atual será arquivado no histórico e um novo pacote será criado.`;
+  document.getElementById('rv_qtd').value=a.qtdAulas;
+  document.getElementById('rv_valor').value=a.valor;
+  document.getElementById('rv_data').value=new Date().toISOString().split('T')[0];
+  closeDetail();
+  document.getElementById('renovarModal').classList.add('open');
+}
+function closeRenovar(){document.getElementById('renovarModal').classList.remove('open');}
+async function confirmarRenovar(){
+  const a=alunos.find(x=>x.id===renovandoId);
+  const done=a.aulas.filter(x=>x.done).length;
+  (a.historico=a.historico||[]).push({
+    numPacote:a.numPacote, qtdAulas:a.qtdAulas, valor:a.valor,
+    dataPag:a.dataPag, aulasConcluidas:done,
+    aulas: a.aulas.map(au=>({...au}))
+  });
+  const novoQtd=parseInt(document.getElementById('rv_qtd').value)||a.qtdAulas;
+  a.numPacote=a.numPacote+1;
+  a.qtdAulas=novoQtd;
+  a.valor=parseFloat(document.getElementById('rv_valor').value)||a.valor;
+  a.dataPag=document.getElementById('rv_data').value;
+  a.status='ativo';
+  a.aulas=Array.from({length:novoQtd},(_,i)=>({label:`Aula ${i+1}`,done:false,date:''}));
+  await save(a);
+  closeRenovar();renderAll();
+  alert(`✅ Pacote ${a.numPacote} criado para ${a.nome}!`);
+}
+
+// ─────────────── RELATÓRIO FINANCEIRO ───────────────
+function initRelatorioControls(){
+  const mesEl=document.getElementById('relMes');
+  const anoEl=document.getElementById('relAno');
+  const meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  meses.forEach((m,i)=>{const o=document.createElement('option');o.value=i+1;o.textContent=m;mesEl.appendChild(o);});
+  const hoje=new Date();
+  mesEl.value=hoje.getMonth()+1;
+  for(let y=hoje.getFullYear()-2;y<=hoje.getFullYear()+1;y++){const o=document.createElement('option');o.value=y;o.textContent=y;anoEl.appendChild(o);}
+  anoEl.value=hoje.getFullYear();
+}
+
+function renderRelatorio(){
+  const mes=parseInt(document.getElementById('relMes').value);
+  const ano=parseInt(document.getElementById('relAno').value);
+  const body=document.getElementById('relatorioBody');
+
+  // Coleta todos os pagamentos (pacote atual + histórico)
+  const pagamentos=[];
+  alunos.forEach(a=>{
+    const addPag=(p,nome,tipo)=>{
+      if(!p.dataPag) return;
+      const d=new Date(p.dataPag+'T12:00:00');
+      if(d.getMonth()+1===mes && d.getFullYear()===ano) pagamentos.push({nome,tipo,numPacote:p.numPacote,qtdAulas:p.qtdAulas,valor:p.valor||0,dataPag:p.dataPag});
+    };
+    addPag(a,a.nome,a.tipo);
+    (a.historico||[]).forEach(h=>addPag(h,a.nome,a.tipo));
+  });
+
+  if(!pagamentos.length){
+    body.innerHTML=`<div class="no-data">Nenhum pagamento registrado em ${mes}/${ano}.</div>`;
+    return;
+  }
+
+  const total=pagamentos.reduce((s,p)=>s+p.valor,0);
+  const porTipo={personal:0,tercas:0,sabados:0};
+  pagamentos.forEach(p=>porTipo[p.tipo]=(porTipo[p.tipo]||0)+p.valor);
+  const maxBar=Math.max(...Object.values(porTipo),1);
+  const tipoLabel={personal:'Personal',tercas:'Terças & Quintas',sabados:'Sábados'};
+  const tipoClass={personal:'tipo-personal',tercas:'tipo-tercas',sabados:'tipo-sabados'};
+
+  body.innerHTML=`
+    <div class="cards-grid">
+      <div class="kpi-card"><div class="kpi-value">R$ ${total.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="kpi-label">Receita total</div><div class="kpi-sub">${pagamentos.length} pagamento(s)</div></div>
+      <div class="kpi-card"><div class="kpi-value">R$ ${porTipo.personal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="kpi-label">Personal</div><div class="kpi-sub">${pagamentos.filter(p=>p.tipo==='personal').length} pag.</div></div>
+      <div class="kpi-card"><div class="kpi-value">R$ ${porTipo.tercas.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="kpi-label">Terças & Quintas</div><div class="kpi-sub">${pagamentos.filter(p=>p.tipo==='tercas').length} pag.</div></div>
+      <div class="kpi-card"><div class="kpi-value">R$ ${porTipo.sabados.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="kpi-label">Sábados</div><div class="kpi-sub">${pagamentos.filter(p=>p.tipo==='sabados').length} pag.</div></div>
+    </div>
+
+    <div class="rel-section-title">Distribuição por tipo</div>
+    <div class="bar-chart">
+      ${Object.entries(porTipo).map(([tipo,val])=>`
+        <div class="bar-row">
+          <div class="bar-name">${tipoLabel[tipo]}</div>
+          <div class="bar-wrap"><div class="bar-fill" style="width:${Math.round(val/maxBar*100)}%">${val>0?'R$ '+val.toLocaleString('pt-BR'):''}</div></div>
+        </div>`).join('')}
+    </div>
+
+    <div class="rel-section-title">Detalhamento</div>
+    <table class="rel-table">
+      <thead><tr><th>Aluno</th><th>Tipo</th><th>Pacote</th><th>Aulas</th><th>Data</th><th style="text-align:right">Valor</th></tr></thead>
+      <tbody>
+        ${pagamentos.sort((a,b)=>new Date(a.dataPag)-new Date(b.dataPag)).map(p=>`
+          <tr>
+            <td>${p.nome}</td>
+            <td><span class="tipo-badge ${tipoClass[p.tipo]}">${tipoLabel[p.tipo]}</span></td>
+            <td style="color:var(--text-muted);">nº ${p.numPacote}</td>
+            <td style="color:var(--text-muted);">${p.qtdAulas}</td>
+            <td style="color:var(--text-muted);">${fmtDate(p.dataPag)}</td>
+            <td style="text-align:right;font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--gold);">R$ ${p.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+          </tr>`).join('')}
+        <tr style="font-weight:600;">
+          <td colspan="5" style="color:var(--text-muted);font-size:12px;letter-spacing:.06em;text-transform:uppercase;">Total do mês</td>
+          <td style="text-align:right;font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--gold);">R$ ${total.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+        </tr>
+      </tbody>
+    </table>`;
+}
+
+// ─────────────── UTILS ───────────────
+function fmtDate(d){
+  if(!d) return '';
+  const [y,m,day]=d.split('-');
+  const months=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  return `${parseInt(day)} de ${months[parseInt(m)-1]}. ${y}`;
+}
+function exportData(){
+  const blob=new Blob([JSON.stringify(alunos,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='alunos-yogacomnorber.json';a.click();
+}
+
+// close on overlay click
+['newModal','detailModal','renovarModal','confirmModal'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',e=>{if(e.target.id===id) document.getElementById(id).classList.remove('open');});
+});
+</script>
+</body>
+</html>
