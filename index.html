@@ -243,6 +243,28 @@ textarea{resize:vertical;min-height:70px;}
 .om-svg-sm { width:36px; height:36px; display:inline-block; vertical-align:middle; }
 .om-svg-lg { width:80px; height:80px; display:inline-block; }
 .om-svg-md { width:28px; height:28px; display:inline-block; vertical-align:middle; }
+.btn-ordem{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;padding:1px 3px;line-height:1;transition:color .15s;}
+.btn-ordem:hover{color:var(--gold);}
+.btn-step{
+  min-width:44px;min-height:44px;
+  padding:0 16px;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  color:var(--gold);
+  font-size:22px;
+  font-weight:300;
+  cursor:pointer;
+  line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+}
+.btn-step:active{background:var(--gold-dim);}
+.btn-step-left{border-right:none;border-radius:8px 0 0 8px;}
+.btn-step-right{border-left:none;border-radius:0 8px 8px 0;}
+.step-input{border-radius:0;text-align:center;-moz-appearance:textfield;-webkit-appearance:none;}
+.step-input::-webkit-inner-spin-button,.step-input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
 .relatorio-page{padding:20px 24px;display:none;}
 .relatorio-page.active{display:block;}
 .rel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
@@ -387,11 +409,19 @@ textarea{resize:vertical;min-height:70px;}
       <div class="form-row">
         <div class="form-group">
           <label>Qtd. aulas no pacote</label>
-          <input type="number" id="f_qtdAulas" min="1" max="200" value="8" onchange="gerarAulas()">
+          <div style="display:flex;align-items:stretch;">
+            <button type="button" class="btn-step btn-step-left" onclick="stepField('f_qtdAulas',-1,1,200)">−</button>
+            <input type="number" id="f_qtdAulas" min="1" max="200" value="8" onchange="gerarAulas()" class="step-input">
+            <button type="button" class="btn-step btn-step-right" onclick="stepField('f_qtdAulas',1,1,200)">+</button>
+          </div>
         </div>
         <div class="form-group">
           <label>Valor pago (R$)</label>
-          <input type="number" id="f_valor" min="0" step="10" placeholder="350">
+          <div style="display:flex;align-items:stretch;">
+            <button type="button" class="btn-step btn-step-left" onclick="stepField('f_valor',-10,0,99999)">−</button>
+            <input type="number" id="f_valor" min="0" step="10" placeholder="350" class="step-input">
+            <button type="button" class="btn-step btn-step-right" onclick="stepField('f_valor',10,0,99999)">+</button>
+          </div>
         </div>
       </div>
       <div class="form-row">
@@ -436,8 +466,14 @@ textarea{resize:vertical;min-height:70px;}
     <div class="modal-body" id="detailBody"></div>
     <div class="modal-footer">
       <button class="btn-delete" onclick="deletarAluno()">🗑 Excluir</button>
-      <button class="btn-renovar" onclick="abrirRenovar()">🔄 Renovar pacote</button>
+      <button class="btn-renovar" onclick="abrirRenovar()">🔄 Renovar</button>
       <button class="btn-edit" onclick="editarAluno()">✏️ Editar</button>
+      <div style="display:flex;gap:4px;margin-left:auto;">
+        <button class="btn-ghost btn" style="padding:6px 9px;font-size:14px;" onclick="moverAluno(viewingId,-999)" title="Mover para o início">⇈</button>
+        <button class="btn-ghost btn" style="padding:6px 9px;font-size:14px;" onclick="moverAluno(viewingId,-1)"   title="Mover para cima">↑</button>
+        <button class="btn-ghost btn" style="padding:6px 9px;font-size:14px;" onclick="moverAluno(viewingId,1)"    title="Mover para baixo">↓</button>
+        <button class="btn-ghost btn" style="padding:6px 9px;font-size:14px;" onclick="moverAluno(viewingId,999)"  title="Mover para o final">⇊</button>
+      </div>
       <button class="btn btn-primary" onclick="closeDetail()">Fechar</button>
     </div>
   </div>
@@ -468,11 +504,19 @@ textarea{resize:vertical;min-height:70px;}
       <div class="form-row" style="margin-top:4px;">
         <div class="form-group">
           <label>Qtd. aulas novo pacote</label>
-          <input type="number" id="rv_qtd" min="1" max="200" value="8">
+          <div style="display:flex;align-items:stretch;">
+            <button type="button" class="btn-step btn-step-left" onclick="stepField('rv_qtd',-1,1,200)">−</button>
+            <input type="number" id="rv_qtd" min="1" max="200" value="8" class="step-input">
+            <button type="button" class="btn-step btn-step-right" onclick="stepField('rv_qtd',1,1,200)">+</button>
+          </div>
         </div>
         <div class="form-group">
           <label>Novo valor (R$)</label>
-          <input type="number" id="rv_valor" min="0" step="10">
+          <div style="display:flex;align-items:stretch;">
+            <button type="button" class="btn-step btn-step-left" onclick="stepField('rv_valor',-10,0,99999)">−</button>
+            <input type="number" id="rv_valor" min="0" step="10" class="step-input">
+            <button type="button" class="btn-step btn-step-right" onclick="stepField('rv_valor',10,0,99999)">+</button>
+          </div>
         </div>
       </div>
       <div class="form-group">
@@ -585,6 +629,15 @@ function omSVG(size){
 </svg>`;
 }
 
+function stepField(id, step, min, max){
+  const el = document.getElementById(id);
+  let val = parseFloat(el.value) || 0;
+  val = Math.min(max, Math.max(min, val + step));
+  el.value = val;
+  // disparar onchange se existir (para gerarAulas no campo de qtd)
+  el.dispatchEvent(new Event('change'));
+}
+
 // ─────────────── SENHA ───────────────
 function verificarSenha(){
   const input=document.getElementById('lockInput');
@@ -662,6 +715,42 @@ function abrirNovoQuadro(){
   openNewModal(id);
 }
 
+// ─────────────── REORDENAÇÃO ───────────────
+function moverQuadro(id, dir){
+  const i = quadros.findIndex(q=>q.id===id);
+  const j = i + dir;
+  if(j<0 || j>=quadros.length) return;
+  [quadros[i], quadros[j]] = [quadros[j], quadros[i]];
+  saveQuadros();
+  renderBoard();
+  renderAll();
+}
+
+function moverAluno(id, dir){
+  // dir: -1=cima, 1=baixo, -999=início, 999=final
+  const a = alunos.find(x=>x.id===id);
+  const tipo = a.tipo;
+  // pegar só alunos do mesmo quadro na ordem atual
+  const doQuadro = alunos.filter(x=>x.tipo===tipo);
+  const i = doQuadro.findIndex(x=>x.id===id);
+  let j;
+  if(dir === -999) j = 0;
+  else if(dir === 999) j = doQuadro.length - 1;
+  else j = i + dir;
+  if(j<0 || j>=doQuadro.length || j===i) return;
+
+  // reordenar dentro do array global
+  const idxGlobalI = alunos.indexOf(doQuadro[i]);
+  const idxGlobalJ = alunos.indexOf(doQuadro[j]);
+  [alunos[idxGlobalI], alunos[idxGlobalJ]] = [alunos[idxGlobalJ], alunos[idxGlobalI]];
+
+  // salvar ordem no Firebase — gravar campo 'ordem' em cada aluno do quadro
+  const atualizados = alunos.filter(x=>x.tipo===tipo);
+  atualizados.forEach((al, oi)=>{ al.ordem = oi; save(al); });
+
+  renderAll();
+}
+
 function excluirQuadro(id){
   const q = quadros.find(x=>x.id===id);
   const nAlunos = alunos.filter(a=>a.tipo===id).length;
@@ -718,15 +807,6 @@ async function carregarDados(){
     // Carregar alunos
     const snap = await db.collection('alunos').get();
     alunos = snap.docs.map(d => d.data());
-
-    // Se banco vazio, inserir dados de exemplo
-    if(alunos.length === 0){
-      const exemplo = getDadosExemplo();
-      for(const a of exemplo){
-        await db.collection('alunos').doc(a.id).set(a);
-      }
-      alunos = exemplo;
-    }
   } catch(e){
     console.error('Erro ao carregar Firebase:', e);
     alert('Erro ao conectar com o banco de dados. Verifique sua conexão.');
@@ -813,7 +893,7 @@ function renderBoard(){
   const board = document.getElementById('board');
   board.innerHTML = '';
 
-  quadros.forEach(q=>{
+  quadros.forEach((q, qi)=>{
     const cor = corDoQuadro(q.id);
     const col = document.createElement('div');
     col.className = 'column';
@@ -822,15 +902,19 @@ function renderBoard(){
 
     const isFixo = ['personal','tercas','sabados'].includes(q.id);
     const deleteBtnHtml = isFixo ? '' :
-      `<button onclick="excluirQuadro('${q.id}')" title="Excluir quadro"
-        style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;padding:2px 4px;line-height:1;"
+      `<button class="btn-ordem" onclick="excluirQuadro('${q.id}')" title="Excluir quadro"
         onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-dim)'">✕</button>`;
+
+    const podeSubir  = qi > 0;
+    const podeDescer = qi < quadros.length - 1;
 
     col.innerHTML = `
       <div class="column-header">
         <span style="font-size:15px;">${q.icone||'📅'}</span>
-        <span class="col-title" style="color:${cor};">${q.nome}</span>
+        <span class="col-title" style="color:${cor};flex:1;">${q.nome}</span>
         <span class="col-count" id="count-${q.id}">0</span>
+        <button class="btn-ordem" onclick="moverQuadro('${q.id}',-1)" title="Mover para esquerda" ${podeSubir?'':'disabled style="opacity:0.2;"'}>◀</button>
+        <button class="btn-ordem" onclick="moverQuadro('${q.id}',1)"  title="Mover para direita" ${podeDescer?'':'disabled style="opacity:0.2;"'}>▶</button>
         ${deleteBtnHtml}
       </div>
       <div class="column-cards" id="cards-${q.id}"></div>
@@ -866,6 +950,11 @@ function renderAll(){
     if(cols[a.tipo]!==undefined) cols[a.tipo].push(a);
   });
 
+  // respeitar ordem definida pelo usuário
+  Object.keys(cols).forEach(k=>{
+    cols[k].sort((a,b)=>(a.ordem??999)-(b.ordem??999));
+  });
+
   quadros.forEach(q=>{
     const el = document.getElementById('cards-'+q.id);
     if(!el) return;
@@ -891,12 +980,20 @@ function buildCard(a){
   const fillClass=pct>=90?'danger':pct>=70?'warning':'';
   const statusMap={ativo:'status-active',encerrando:'status-ending',novo:'status-new'};
   const statusLabel={ativo:'● Pacote ativo',encerrando:'⚠ Encerrando',novo:'★ Novo'};
+
+  // posição do aluno na coluna
+  const doQuadro = alunos.filter(x=>x.tipo===a.tipo).sort((x,y)=>(x.ordem??999)-(y.ordem??999));
+  const pos = doQuadro.findIndex(x=>x.id===a.id);
+  const podeSubir  = pos > 0;
+  const podeDescer = pos < doQuadro.length - 1;
+
   const div=document.createElement('div');
   div.className='card';
-  div.onclick=()=>openDetail(a.id);
   div.innerHTML=`
-    <div class="card-banner"><div class="card-banner-text">ॐ YôgacomNorber</div></div>
-    <div class="card-body">
+    <div class="card-banner" style="cursor:pointer;" onclick="openDetail('${a.id}')">
+      <div class="card-banner-text">ॐ YôgacomNorber</div>
+    </div>
+    <div class="card-body" style="cursor:pointer;" onclick="openDetail('${a.id}')">
       <div class="card-status ${statusMap[a.status]}">${statusLabel[a.status]}</div>
       <div class="card-name">${a.nome} – Pacote ${a.numPacote} (${a.qtdAulas} aulas)</div>
       <div class="progress-wrap">
@@ -904,6 +1001,12 @@ function buildCard(a){
         <span class="progress-text">${done}/${total}</span>
       </div>
       <div class="card-value">R$: ${(a.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:2px;padding:4px 8px 6px;border-top:1px solid var(--border);">
+      <button class="btn-ordem" onclick="moverAluno('${a.id}',-999)" title="Início" ${podeSubir?'':'disabled style="opacity:0.2;cursor:default;"'}>⇈</button>
+      <button class="btn-ordem" onclick="moverAluno('${a.id}',-1)"   title="Mover para cima" ${podeSubir?'':'disabled style="opacity:0.2;cursor:default;"'}>↑</button>
+      <button class="btn-ordem" onclick="moverAluno('${a.id}',1)"    title="Mover para baixo" ${podeDescer?'':'disabled style="opacity:0.2;cursor:default;"'}>↓</button>
+      <button class="btn-ordem" onclick="moverAluno('${a.id}',999)"  title="Final" ${podeDescer?'':'disabled style="opacity:0.2;cursor:default;"'}>⇊</button>
     </div>`;
   return div;
 }
