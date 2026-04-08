@@ -1071,12 +1071,17 @@ async function salvarAluno(){
     const idx=alunos.findIndex(a=>a.id===editingId);
     alunos[idx]={...alunos[idx],...dados};
     await save(alunos[idx]);
+    const idEditado = editingId;
+    closeNewModal();
+    renderAll();
+    openDetail(idEditado);
   } else {
     const novo={id:uid(),historico:[],...dados};
     alunos.push(novo);
     await save(novo);
+    closeNewModal();
+    renderAll();
   }
-  closeNewModal();renderAll();
 }
 
 // ─────────────── MODAL DETALHE ───────────────
