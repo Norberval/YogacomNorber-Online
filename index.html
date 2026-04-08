@@ -246,8 +246,8 @@ textarea{resize:vertical;min-height:70px;}
 .btn-ordem{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;padding:1px 3px;line-height:1;transition:color .15s;}
 .btn-ordem:hover{color:var(--gold);}
 .btn-step{
-  min-width:44px;min-height:44px;
-  padding:0 16px;
+  min-width:40px;min-height:44px;
+  padding:0 12px;
   background:var(--surface2);
   border:1px solid var(--border);
   color:var(--gold);
@@ -259,11 +259,12 @@ textarea{resize:vertical;min-height:70px;}
   transition:background .15s;
   -webkit-tap-highlight-color:transparent;
   user-select:none;
+  flex-shrink:0;
 }
 .btn-step:active{background:var(--gold-dim);}
 .btn-step-left{border-right:none;border-radius:8px 0 0 8px;}
 .btn-step-right{border-left:none;border-radius:0 8px 8px 0;}
-.step-input{border-radius:0;text-align:center;-moz-appearance:textfield;-webkit-appearance:none;}
+.step-input{border-radius:0;text-align:center;-moz-appearance:textfield;-webkit-appearance:none;min-width:60px;flex:1;}
 .step-input::-webkit-inner-spin-button,.step-input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
 .relatorio-page{padding:20px 24px;display:none;}
 .relatorio-page.active{display:block;}
