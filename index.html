@@ -174,8 +174,8 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
 .modal-body{padding:18px 22px;display:flex;flex-direction:column;gap:14px;}
 .modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;}
 .form-group{display:flex;flex-direction:column;gap:5px;}
-.form-row{display:flex;gap:10px;}
-.form-row .form-group{flex:1;}
+.form-row{display:flex;gap:10px;flex-wrap:wrap;}
+.form-row .form-group{flex:1;min-width:130px;}
 label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);}
 input,select,textarea{padding:9px 11px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .2s;width:100%;}
 input:focus,select:focus,textarea:focus{border-color:var(--gold);}
@@ -432,7 +432,11 @@ textarea{resize:vertical;min-height:70px;}
         </div>
         <div class="form-group">
           <label>Número do pacote</label>
-          <input type="number" id="f_numPacote" min="1" value="1">
+          <div style="display:flex;align-items:stretch;">
+            <button type="button" class="btn-step btn-step-left" onclick="stepField('f_numPacote',-1,1,999)">−</button>
+            <input type="number" id="f_numPacote" min="1" value="1" class="step-input">
+            <button type="button" class="btn-step btn-step-right" onclick="stepField('f_numPacote',1,1,999)">+</button>
+          </div>
         </div>
       </div>
       <div class="form-group">
