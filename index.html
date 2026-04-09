@@ -1041,18 +1041,40 @@ function openNewModal(tipo){
 function closeNewModal(){document.getElementById('newModal').classList.remove('open');}
 
 function gerarAulas(){
-  const qtd=parseInt(document.getElementById('f_qtdAulas').value)||8;
-  const existing=editingId?(alunos.find(a=>a.id===editingId)?.aulas||[]):[];
-  const list=document.getElementById('aulaList');
-  list.innerHTML='';
-  for(let i=0;i<qtd;i++){
-    const ex=existing[i]||{done:false,date:''};
-    const div=document.createElement('div');
-    div.className='aula-item';
-    div.innerHTML=`
-      <input type="checkbox" id="ck_${i}" ${ex.done?'checked':''} onchange="this.nextElementSibling.className='aula-item-label'+(this.checked?' done':'')">
-      <span class="aula-item-label${ex.done?' done':''}">Aula ${i+1}</span>
-      <input type="date" class="aula-date-input" id="dt_${i}" value="${ex.date}">`;
+  const qtd = parseInt(document.getElementById('f_qtdAulas').value) || 8;
+  const list = document.getElementById('aulaList');
+
+  // Capturar estado ATUAL do DOM antes de regenerar (preserva edições do usuário)
+  const estadoAtual = [];
+  const itemsAtual = list.querySelectorAll('.aula-item');
+  itemsAtual.forEach((item, i) => {
+    estadoAtual[i] = {
+      done: item.querySelector('input[type="checkbox"]').checked,
+      date: item.querySelector('input[type="date"]').value,
+      nota: item.querySelector('input[type="text"]')?.value || ''
+    };
+  });
+
+  // Se não há estado atual (primeira abertura), usar dados do Firebase
+  const existing = editingId ? (alunos.find(a=>a.id===editingId)?.aulas || []) : [];
+
+  list.innerHTML = '';
+  for(let i = 0; i < qtd; i++){
+    // Prioridade: estado atual do DOM > dados do Firebase > vazio
+    const ex = estadoAtual[i] || existing[i] || {done:false, date:'', nota:''};
+    const div = document.createElement('div');
+    div.className = 'aula-item';
+    div.style.flexDirection = 'column';
+    div.style.alignItems = 'stretch';
+    div.style.gap = '6px';
+    div.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="ck_${i}" ${ex.done?'checked':''} onchange="this.parentElement.nextElementSibling.querySelector('input').style.display=this.checked?'block':'block';this.parentElement.parentElement.querySelector('.aula-item-label').className='aula-item-label'+(this.checked?' done':'')">
+        <span class="aula-item-label${ex.done?' done':''}">Aula ${i+1}</span>
+        <input type="date" class="aula-date-input" id="dt_${i}" value="${ex.date||''}">
+      </div>
+      <input type="text" id="nt_${i}" placeholder="Observação da aula (ex: falta pagar)" value="${ex.nota||''}"
+        style="font-size:11px;padding:5px 8px;border-radius:6px;background:var(--surface);border:1px solid var(--border);color:var(--text-muted);width:100%;">`;
     list.appendChild(div);
   }
 }
@@ -1062,7 +1084,12 @@ async function salvarAluno(){
   if(!nome){alert('Informe o nome do aluno.');return;}
   const qtd=parseInt(document.getElementById('f_qtdAulas').value)||8;
   const aulas=[];
-  for(let i=0;i<qtd;i++) aulas.push({label:`Aula ${i+1}`,done:document.getElementById(`ck_${i}`).checked,date:document.getElementById(`dt_${i}`).value});
+  for(let i=0;i<qtd;i++) aulas.push({
+    label:`Aula ${i+1}`,
+    done:document.getElementById(`ck_${i}`).checked,
+    date:document.getElementById(`dt_${i}`).value,
+    nota:document.getElementById(`nt_${i}`)?.value||''
+  });
   const dados={nome,tipo:document.getElementById('f_tipo').value,status:document.getElementById('f_status').value,
     qtdAulas:qtd,valor:parseFloat(document.getElementById('f_valor').value)||0,
     dataPag:document.getElementById('f_dataPag').value,numPacote:parseInt(document.getElementById('f_numPacote').value)||1,
@@ -1098,11 +1125,14 @@ function openDetail(id){
   const hist=a.historico||[];
 
   const checksHtml=a.aulas.map((au,i)=>`
-    <div class="check-row">
-      <input type="checkbox" ${au.done?'checked':''} onchange="toggleAula('${id}',${i},this.checked)">
-      <span class="${au.done?'done':''}">${au.label}</span>
-      ${au.date?`<span class="check-date-badge">📅 ${fmtDate(au.date)}</span>`
-        :`<input type="date" style="padding:3px 7px;font-size:11px;width:135px;" value="" onchange="setAulaDate('${id}',${i},this.value)">`}
+    <div class="check-row" style="flex-direction:column;align-items:stretch;gap:5px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" ${au.done?'checked':''} onchange="toggleAula('${id}',${i},this.checked)">
+        <span class="${au.done?'done':''}">${au.label}</span>
+        ${au.date?`<span class="check-date-badge">📅 ${fmtDate(au.date)}</span>`
+          :`<input type="date" style="padding:3px 7px;font-size:11px;width:135px;" value="" onchange="setAulaDate('${id}',${i},this.value)">`}
+      </div>
+      ${au.nota?`<div style="font-size:11px;color:var(--gold);padding:2px 4px;background:var(--gold-dim);border-radius:4px;">📝 ${au.nota}</div>`:''}
     </div>`).join('');
 
   const histHtml = hist.length ? hist.slice().reverse().map((h,hi)=>{
