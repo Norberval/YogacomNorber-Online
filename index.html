@@ -1072,6 +1072,9 @@ function gerarAulas(){
         <input type="checkbox" id="ck_${i}" ${ex.done?'checked':''} onchange="this.parentElement.nextElementSibling.querySelector('input').style.display=this.checked?'block':'block';this.parentElement.parentElement.querySelector('.aula-item-label').className='aula-item-label'+(this.checked?' done':'')">
         <span class="aula-item-label${ex.done?' done':''}">Aula ${i+1}</span>
         <input type="date" class="aula-date-input" id="dt_${i}" value="${ex.date||''}">
+        <button type="button" onclick="document.getElementById('dt_${i}').value=''" title="Limpar data"
+          style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;padding:2px 4px;flex-shrink:0;line-height:1;"
+          onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-dim)'">✕</button>
       </div>
       <input type="text" id="nt_${i}" placeholder="Observação da aula (ex: falta pagar)" value="${ex.nota||''}"
         style="font-size:11px;padding:5px 8px;border-radius:6px;background:var(--surface);border:1px solid var(--border);color:var(--text-muted);width:100%;">`;
