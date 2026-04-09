@@ -1086,6 +1086,7 @@ function openNewModal(tipo){
   document.getElementById('f_dataPag').value=new Date().toISOString().split('T')[0];
   document.getElementById('f_numPacote').value=1;
   document.getElementById('f_obs').value='';
+  document.getElementById('aulaList').innerHTML=''; // limpa DOM antigo
   gerarAulas();
   document.getElementById('newModal').classList.add('open');
 }
@@ -1444,6 +1445,7 @@ function editarAluno(){
   document.getElementById('f_dataPag').value=a.dataPag;
   document.getElementById('f_numPacote').value=a.numPacote;
   document.getElementById('f_obs').value=a.obs;
+  document.getElementById('aulaList').innerHTML=''; // limpa DOM antigo
   gerarAulas();
   document.getElementById('newModal').classList.add('open');
 }
