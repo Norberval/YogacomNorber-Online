@@ -484,6 +484,57 @@ textarea{resize:vertical;min-height:70px;}
   </div>
 </div>
 
+<!-- ══════════ MODAL EDITAR HISTÓRICO ══════════ -->
+<div class="modal-overlay" id="editHistModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="editHistTitle">Editar pacote do histórico</div>
+      <button class="modal-close" onclick="fecharEditHist()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Qtd. aulas</label>
+          <div style="display:flex;align-items:stretch;">
+            <button type="button" class="btn-step btn-step-left" onclick="stepField('eh_qtd',-1,1,200)">−</button>
+            <input type="number" id="eh_qtd" min="1" max="200" class="step-input" onchange="gerarAulasHist()">
+            <button type="button" class="btn-step btn-step-right" onclick="stepField('eh_qtd',1,1,200)">+</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Valor pago (R$)</label>
+          <div style="display:flex;align-items:stretch;">
+            <button type="button" class="btn-step btn-step-left" onclick="stepField('eh_valor',-10,0,99999)">−</button>
+            <input type="number" id="eh_valor" min="0" step="10" class="step-input">
+            <button type="button" class="btn-step btn-step-right" onclick="stepField('eh_valor',10,0,99999)">+</button>
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Data do pagamento</label>
+          <input type="date" id="eh_dataPag">
+        </div>
+        <div class="form-group">
+          <label>Nº do pacote</label>
+          <input type="number" id="eh_numPacote" min="1" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 11px;color:var(--text);">
+        </div>
+      </div>
+      <div class="checklist-section">
+        <div class="checklist-title">
+          <span>✅ Aulas do pacote</span>
+          <button class="btn btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="gerarAulasHist()">Regenerar</button>
+        </div>
+        <div class="aula-list" id="aulaListHist"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="fecharEditHist()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarEditHist()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════ MODAL CONFIRMAÇÃO ══════════ -->
 <div class="modal-overlay" id="confirmModal">
   <div class="modal" style="max-width:360px;">
@@ -1165,6 +1216,10 @@ function openDetail(id){
           style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;white-space:nowrap;">
           Ver aulas ▾
         </button>
+        <button onclick="abrirEditHist('${id}',${hIdx})"
+          style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid rgba(201,168,76,.3);background:var(--gold-dim);color:var(--gold);cursor:pointer;white-space:nowrap;">
+          ✏️
+        </button>
         <button data-aluno="${id}" data-hIdx="${hIdx}" onclick="excluirHistorico(this)"
           style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--red-dim);background:transparent;color:var(--red);cursor:pointer;white-space:nowrap;">
           🗑
@@ -1259,6 +1314,87 @@ function excluirHistorico(btn){
       if(tabBtn) tabBtn.textContent = `📦 Histórico (${a.historico.length})`;
     }
   );
+}
+
+// ─────────────── EDITAR HISTÓRICO ───────────────
+let editHistAlunoId = null, editHistIdx = null;
+
+function abrirEditHist(alunoId, hIdx){
+  editHistAlunoId = alunoId;
+  editHistIdx = hIdx;
+  const a = alunos.find(x=>x.id===alunoId);
+  const h = a.historico[hIdx];
+  document.getElementById('editHistTitle').textContent = `Editar Pacote ${h.numPacote} — ${a.nome}`;
+  document.getElementById('eh_qtd').value = h.qtdAulas;
+  document.getElementById('eh_valor').value = h.valor||0;
+  document.getElementById('eh_dataPag').value = h.dataPag||'';
+  document.getElementById('eh_numPacote').value = h.numPacote;
+  gerarAulasHist();
+  document.getElementById('editHistModal').classList.add('open');
+}
+
+function fecharEditHist(){
+  document.getElementById('editHistModal').classList.remove('open');
+}
+
+function gerarAulasHist(){
+  const a = alunos.find(x=>x.id===editHistAlunoId);
+  const h = a?.historico[editHistIdx];
+  const qtd = parseInt(document.getElementById('eh_qtd').value) || (h?.qtdAulas||8);
+  const list = document.getElementById('aulaListHist');
+
+  // Preservar estado atual do DOM
+  const estadoAtual = [];
+  list.querySelectorAll('.aula-item').forEach((item,i)=>{
+    estadoAtual[i]={
+      done: item.querySelector('input[type="checkbox"]').checked,
+      date: item.querySelector('input[type="date"]').value,
+      nota: item.querySelector('input[type="text"]')?.value||''
+    };
+  });
+
+  const existing = h?.aulas || [];
+  list.innerHTML='';
+  for(let i=0;i<qtd;i++){
+    const ex = estadoAtual[i] !== undefined ? estadoAtual[i] : (existing[i]||{done:false,date:'',nota:''});
+    const div = document.createElement('div');
+    div.className='aula-item';
+    div.style.cssText='flex-direction:column;align-items:stretch;gap:6px;';
+    div.innerHTML=`
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="hck_${i}" ${ex.done?'checked':''} onchange="this.parentElement.parentElement.querySelector('.aula-item-label').className='aula-item-label'+(this.checked?' done':'')">
+        <span class="aula-item-label${ex.done?' done':''}">Aula ${i+1}</span>
+        <input type="date" class="aula-date-input" id="hdt_${i}" value="${ex.date||''}">
+        <button type="button" onclick="document.getElementById('hdt_${i}').value=''" title="Limpar data"
+          style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;padding:2px 4px;flex-shrink:0;"
+          onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-dim)'">✕</button>
+      </div>
+      <input type="text" id="hnt_${i}" placeholder="Observação da aula" value="${ex.nota||''}"
+        style="font-size:11px;padding:5px 8px;border-radius:6px;background:var(--surface);border:1px solid var(--border);color:var(--text-muted);width:100%;">`;
+    list.appendChild(div);
+  }
+}
+
+async function salvarEditHist(){
+  const a = alunos.find(x=>x.id===editHistAlunoId);
+  const h = a.historico[editHistIdx];
+  const qtd = parseInt(document.getElementById('eh_qtd').value)||h.qtdAulas;
+  const aulas = [];
+  for(let i=0;i<qtd;i++) aulas.push({
+    label:`Aula ${i+1}`,
+    done: document.getElementById(`hck_${i}`).checked,
+    date: document.getElementById(`hdt_${i}`).value,
+    nota: document.getElementById(`hnt_${i}`)?.value||''
+  });
+  h.qtdAulas = qtd;
+  h.valor = parseFloat(document.getElementById('eh_valor').value)||0;
+  h.dataPag = document.getElementById('eh_dataPag').value;
+  h.numPacote = parseInt(document.getElementById('eh_numPacote').value)||h.numPacote;
+  h.aulasConcluidas = aulas.filter(x=>x.done).length;
+  h.aulas = aulas;
+  await save(a);
+  fecharEditHist();
+  openDetail(editHistAlunoId);
 }
 
 function toggleHistAulas(btn){
@@ -1443,7 +1579,7 @@ function exportData(){
 }
 
 // close on overlay click
-['newModal','detailModal','renovarModal','confirmModal'].forEach(id=>{
+['newModal','detailModal','renovarModal','confirmModal','editHistModal'].forEach(id=>{
   document.getElementById(id).addEventListener('click',e=>{if(e.target.id===id) document.getElementById(id).classList.remove('open');});
 });
 </script>
