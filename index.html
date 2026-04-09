@@ -1044,7 +1044,7 @@ function gerarAulas(){
   const qtd = parseInt(document.getElementById('f_qtdAulas').value) || 8;
   const list = document.getElementById('aulaList');
 
-  // Capturar estado ATUAL do DOM antes de regenerar (preserva edições do usuário)
+  // Capturar estado atual do DOM (preserva edições do usuário no modal)
   const estadoAtual = [];
   const itemsAtual = list.querySelectorAll('.aula-item');
   itemsAtual.forEach((item, i) => {
@@ -1055,13 +1055,13 @@ function gerarAulas(){
     };
   });
 
-  // Se não há estado atual (primeira abertura), usar dados do Firebase
+  // Dados salvos no Firebase para este aluno
   const existing = editingId ? (alunos.find(a=>a.id===editingId)?.aulas || []) : [];
 
   list.innerHTML = '';
   for(let i = 0; i < qtd; i++){
-    // Prioridade: estado atual do DOM > dados do Firebase > vazio
-    const ex = estadoAtual[i] || existing[i] || {done:false, date:'', nota:''};
+    // Se o DOM já tinha esse item, preserva. Senão usa Firebase. Senão vazio.
+    const ex = estadoAtual[i] !== undefined ? estadoAtual[i] : (existing[i] || {done:false, date:'', nota:''});
     const div = document.createElement('div');
     div.className = 'aula-item';
     div.style.flexDirection = 'column';
@@ -1069,7 +1069,7 @@ function gerarAulas(){
     div.style.gap = '6px';
     div.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px;">
-        <input type="checkbox" id="ck_${i}" ${ex.done?'checked':''} onchange="this.parentElement.nextElementSibling.querySelector('input').style.display=this.checked?'block':'block';this.parentElement.parentElement.querySelector('.aula-item-label').className='aula-item-label'+(this.checked?' done':'')">
+        <input type="checkbox" id="ck_${i}" ${ex.done?'checked':''} onchange="this.parentElement.parentElement.querySelector('.aula-item-label').className='aula-item-label'+(this.checked?' done':'')">
         <span class="aula-item-label${ex.done?' done':''}">Aula ${i+1}</span>
         <input type="date" class="aula-date-input" id="dt_${i}" value="${ex.date||''}">
         <button type="button" onclick="document.getElementById('dt_${i}').value=''" title="Limpar data"
@@ -1312,14 +1312,13 @@ function editarAluno(){
   document.getElementById('newModal').classList.add('open');
 }
 
-// ─────────────── RENOVAR PACOTE ───────────────
 function abrirRenovar(){
   renovandoId=viewingId;
   const a=alunos.find(x=>x.id===renovandoId);
   const done=a.aulas.filter(x=>x.done).length;
   document.getElementById('renovInfo').innerHTML=
     `<b>${a.nome}</b><br>Pacote atual: nº ${a.numPacote} — ${done}/${a.aulas.length} aulas concluídas<br>
-     Ao confirmar, o pacote atual será arquivado no histórico e um novo pacote será criado.`;
+     Ao confirmar, o pacote atual será arquivado no histórico e um <b>novo Pacote ${a.numPacote+1}</b> será criado com aulas zeradas.`;
   document.getElementById('rv_qtd').value=a.qtdAulas;
   document.getElementById('rv_valor').value=a.valor;
   document.getElementById('rv_data').value=new Date().toISOString().split('T')[0];
@@ -1330,21 +1329,25 @@ function closeRenovar(){document.getElementById('renovarModal').classList.remove
 async function confirmarRenovar(){
   const a=alunos.find(x=>x.id===renovandoId);
   const done=a.aulas.filter(x=>x.done).length;
+  // arquivar pacote atual no histórico
   (a.historico=a.historico||[]).push({
     numPacote:a.numPacote, qtdAulas:a.qtdAulas, valor:a.valor,
     dataPag:a.dataPag, aulasConcluidas:done,
     aulas: a.aulas.map(au=>({...au}))
   });
+  // criar novo pacote com aulas 100% zeradas
   const novoQtd=parseInt(document.getElementById('rv_qtd').value)||a.qtdAulas;
   a.numPacote=a.numPacote+1;
   a.qtdAulas=novoQtd;
   a.valor=parseFloat(document.getElementById('rv_valor').value)||a.valor;
   a.dataPag=document.getElementById('rv_data').value;
   a.status='ativo';
-  a.aulas=Array.from({length:novoQtd},(_,i)=>({label:`Aula ${i+1}`,done:false,date:''}));
+  a.aulas=Array.from({length:novoQtd},(_,i)=>({label:`Aula ${i+1}`,done:false,date:'',nota:''}));
   await save(a);
-  closeRenovar();renderAll();
-  alert(`✅ Pacote ${a.numPacote} criado para ${a.nome}!`);
+  closeRenovar();
+  renderAll();
+  // reabrir detalhe já com o novo pacote
+  openDetail(a.id);
 }
 
 // ─────────────── RELATÓRIO FINANCEIRO ───────────────
