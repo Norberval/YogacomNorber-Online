@@ -1129,7 +1129,7 @@ function gerarAulas(){
           onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-dim)'">✕</button>
       </div>
       <input type="text" id="nt_${i}" placeholder="Observação da aula (ex: falta pagar)" value="${ex.nota||''}"
-        style="font-size:11px;padding:5px 8px;border-radius:6px;background:var(--surface);border:1px solid var(--border);color:var(--text);width:100%;">`;
+        style="font-size:11px;padding:5px 8px;border-radius:6px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-weight:600;width:100%;">`;
     list.appendChild(div);
   }
 }
@@ -1371,7 +1371,7 @@ function gerarAulasHist(){
           onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-dim)'">✕</button>
       </div>
       <input type="text" id="hnt_${i}" placeholder="Observação da aula" value="${ex.nota||''}"
-        style="font-size:11px;padding:5px 8px;border-radius:6px;background:var(--surface);border:1px solid var(--border);color:var(--text);width:100%;">`;
+        style="font-size:11px;padding:5px 8px;border-radius:6px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-weight:600;width:100%;">`;
     list.appendChild(div);
   }
 }
