@@ -1251,6 +1251,10 @@ function openDetail(id){
           style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;white-space:nowrap;">
           Ver aulas ▾
         </button>
+        <button onclick="reativarPacote('${id}',${hIdx})"
+          style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid rgba(76,175,122,.3);background:var(--green-dim);color:var(--green);cursor:pointer;white-space:nowrap;">
+          ↩ Reativar
+        </button>
         <button onclick="abrirEditHist('${id}',${hIdx})"
           style="font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid rgba(201,168,76,.3);background:var(--gold-dim);color:var(--gold);cursor:pointer;white-space:nowrap;">
           ✏️
@@ -1349,6 +1353,60 @@ function excluirHistorico(btn){
       if(tabBtn) tabBtn.textContent = `📦 Histórico (${a.historico.length})`;
     }
   );
+}
+
+// ─────────────── REATIVAR PACOTE DO HISTÓRICO ───────────────
+function reativarPacote(alunoId, hIdx){
+  const a = alunos.find(x=>x.id===alunoId);
+  const h = a.historico[hIdx];
+  const opcoesQuadros = quadros.map(q=>`<option value="${q.id}"${q.id===a.tipo?' selected':''}>${q.nome}</option>`).join('');
+
+  document.getElementById('confirmMsg').innerHTML = `
+    <div style="margin-bottom:8px;">Reativar <b>Pacote ${h.numPacote}</b> de <b>${a.nome}</b>?</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">O pacote atual será arquivado no histórico e este pacote voltará com todas as aulas e datas.</div>
+    <label style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:6px;">Enviar para o quadro:</label>
+    <select id="destReativar" style="width:100%;padding:9px 11px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;">
+      ${opcoesQuadros}
+    </select>`;
+
+  document.getElementById('confirmOkBtn').textContent = '↩ Reativar';
+  document.getElementById('confirmOkBtn').style.background = 'var(--green)';
+  document.getElementById('confirmOkBtn').style.color = '#1a1206';
+  document.getElementById('confirmOkBtn').style.border = 'none';
+  document.getElementById('confirmOkBtn').onclick = async ()=>{
+    const destino = document.getElementById('destReativar').value;
+    fecharConfirm();
+
+    // arquivar pacote atual no histórico
+    const doneAtual = a.aulas.filter(x=>x.done).length;
+    a.historico.push({
+      numPacote: a.numPacote,
+      qtdAulas: a.qtdAulas,
+      valor: a.valor,
+      dataPag: a.dataPag,
+      aulasConcluidas: doneAtual,
+      aulas: a.aulas.map(au=>({...au}))
+    });
+
+    // reativar o pacote histórico como atual
+    a.numPacote = h.numPacote;
+    a.qtdAulas = h.qtdAulas;
+    a.valor = h.valor;
+    a.dataPag = h.dataPag;
+    a.status = 'ativo';
+    a.aulas = (h.aulas||[]).map(au=>({...au}));
+    a.tipo = destino;
+
+    // remover do histórico
+    a.historico.splice(hIdx, 1);
+
+    await save(a);
+    closeDetail();
+    renderBoard();
+    renderAll();
+    openDetail(alunoId);
+  };
+  document.getElementById('confirmModal').classList.add('open');
 }
 
 // ─────────────── EDITAR HISTÓRICO ───────────────
