@@ -295,6 +295,11 @@ textarea{resize:vertical;min-height:70px;}
 .bar-fill{height:100%;background:var(--gold);border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;font-size:11px;font-weight:600;color:#1a1206;transition:width .5s;}
 .bar-total{font-size:12px;color:var(--gold);font-family:'Cormorant Garamond',serif;font-size:15px;width:70px;}
 .no-data{text-align:center;padding:40px;color:var(--text-dim);font-size:14px;}
+.lixeira-item{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;flex-wrap:wrap;}
+.lixeira-info{flex:1;}
+.lixeira-nome{font-size:14px;font-weight:500;color:var(--text);margin-bottom:4px;}
+.lixeira-meta{font-size:11px;color:var(--text-muted);}
+.lixeira-actions{display:flex;gap:8px;flex-shrink:0;}
 
 /* RENOVAR MODAL */
 .renov-info{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;color:var(--text-muted);line-height:1.6;}
@@ -344,6 +349,7 @@ textarea{resize:vertical;min-height:70px;}
 <div class="nav-tabs">
   <button class="nav-tab active" onclick="showTab('board',this)">📋 Alunos</button>
   <button class="nav-tab" onclick="showTab('relatorio',this)">📊 Relatório financeiro</button>
+  <button class="nav-tab" onclick="showTab('lixeira',this)">🗑 Lixeira</button>
 </div>
 
 <!-- BOARD TAB -->
@@ -366,6 +372,15 @@ textarea{resize:vertical;min-height:70px;}
   </div>
 
   <div class="board" id="board"></div>
+</div>
+
+<!-- LIXEIRA TAB -->
+<div id="tab-lixeira" class="relatorio-page">
+  <div class="rel-header">
+    <div class="rel-title">🗑 Lixeira</div>
+    <button class="btn btn-ghost" onclick="carregarLixeira()">↻ Atualizar</button>
+  </div>
+  <div id="lixeiraBody"></div>
 </div>
 
 <!-- RELATÓRIO TAB -->
@@ -710,6 +725,7 @@ function verificarSenha(){
 }
 window.addEventListener('load',()=>{
   document.getElementById('tab-relatorio').style.display='none';
+  document.getElementById('tab-lixeira').style.display='none';
   document.getElementById('lockInput').focus();
   initFirebase();
   initRelatorioControls();
@@ -812,8 +828,18 @@ function excluirQuadro(id){
   const nAlunos = alunos.filter(a=>a.tipo===id).length;
   const aviso = nAlunos > 0 ? ` (há ${nAlunos} aluno(s) neste quadro que ficará sem quadro)` : '';
   confirmar(
-    `Excluir o quadro "${q.nome}"?${aviso}`,
-    ()=>{ quadros=quadros.filter(x=>x.id!==id); saveQuadros(); renderBoard(); renderAll(); }
+    `Mover o quadro "${q.nome}" para a lixeira?${aviso}`,
+    async ()=>{
+      await db.collection('lixeira').doc('quadro_'+id).set({
+        ...q,
+        _tipo: 'quadro',
+        _deletadoEm: new Date().toISOString()
+      });
+      quadros = quadros.filter(x=>x.id!==id);
+      saveQuadros();
+      renderBoard();
+      renderAll();
+    }
   );
 }
 
@@ -931,7 +957,9 @@ function showTab(tab, el){
   el.classList.add('active');
   document.getElementById('tab-board').style.display = tab==='board'?'block':'none';
   document.getElementById('tab-relatorio').style.display = tab==='relatorio'?'block':'none';
+  document.getElementById('tab-lixeira').style.display = tab==='lixeira'?'block':'none';
   if(tab==='relatorio') renderRelatorio();
+  if(tab==='lixeira') carregarLixeira();
 }
 
 // ─────────────── RENDER BOARD ───────────────
@@ -1425,10 +1453,16 @@ function toggleAula(id,idx,val){
 function setAulaDate(id,idx,val){const a=alunos.find(x=>x.id===id);a.aulas[idx].date=val;save(a);}
 function deletarAluno(){
   confirmar(
-    `Excluir este aluno permanentemente?`,
+    `Mover este aluno para a lixeira?`,
     async ()=>{
+      const a = alunos.find(x=>x.id===viewingId);
+      await db.collection('lixeira').doc(a.id).set({
+        ...a,
+        _tipo: 'aluno',
+        _deletadoEm: new Date().toISOString()
+      });
       await db.collection('alunos').doc(viewingId).delete();
-      alunos=alunos.filter(a=>a.id!==viewingId);
+      alunos = alunos.filter(x=>x.id!==viewingId);
       closeDetail();
     }
   );
@@ -1486,6 +1520,89 @@ async function confirmarRenovar(){
   renderAll();
   // reabrir detalhe já com o novo pacote
   openDetail(a.id);
+}
+
+// ─────────────── LIXEIRA ───────────────
+async function carregarLixeira(){
+  const body = document.getElementById('lixeiraBody');
+  body.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:20px;">Carregando…</div>';
+  const snap = await db.collection('lixeira').get();
+  const itens = snap.docs.map(d=>({_id:d.id,...d.data()}));
+  if(!itens.length){
+    body.innerHTML = '<div class="no-data">Lixeira vazia. Nenhum item deletado.</div>';
+    return;
+  }
+  const alunos_lx = itens.filter(x=>x._tipo==='aluno');
+  const quadros_lx = itens.filter(x=>x._tipo==='quadro');
+
+  let html = '';
+  if(alunos_lx.length){
+    html += `<div class="rel-section-title" style="margin-bottom:12px;">👤 Alunos deletados</div>`;
+    alunos_lx.forEach(a=>{
+      const data = a._deletadoEm ? new Date(a._deletadoEm).toLocaleDateString('pt-BR') : '–';
+      html += `<div class="lixeira-item">
+        <div class="lixeira-info">
+          <div class="lixeira-nome">${a.nome||'–'}</div>
+          <div class="lixeira-meta">Deletado em: ${data} &nbsp;|&nbsp; ${a.qtdAulas||0} aulas &nbsp;|&nbsp; R$ ${(a.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>
+        </div>
+        <div class="lixeira-actions">
+          <button onclick="restaurarAluno('${a._id}')" class="btn-renovar" style="font-size:12px;padding:5px 10px;">↩ Restaurar</button>
+          <button onclick="deletarDefinitivo('${a._id}')" class="btn-delete" style="font-size:12px;padding:5px 10px;">✕ Excluir</button>
+        </div>
+      </div>`;
+    });
+  }
+  if(quadros_lx.length){
+    html += `<div class="rel-section-title" style="margin:20px 0 12px;">📋 Quadros deletados</div>`;
+    quadros_lx.forEach(q=>{
+      const data = q._deletadoEm ? new Date(q._deletadoEm).toLocaleDateString('pt-BR') : '–';
+      html += `<div class="lixeira-item">
+        <div class="lixeira-info">
+          <div class="lixeira-nome">${q.icone||'📅'} ${q.nome||'–'}</div>
+          <div class="lixeira-meta">Deletado em: ${data}</div>
+        </div>
+        <div class="lixeira-actions">
+          <button onclick="restaurarQuadro('${q._id}')" class="btn-renovar" style="font-size:12px;padding:5px 10px;">↩ Restaurar</button>
+          <button onclick="deletarDefinitivo('${q._id}')" class="btn-delete" style="font-size:12px;padding:5px 10px;">✕ Excluir</button>
+        </div>
+      </div>`;
+    });
+  }
+  body.innerHTML = html;
+}
+
+async function restaurarAluno(docId){
+  confirmar('Restaurar este aluno de volta ao board?', async ()=>{
+    const doc = await db.collection('lixeira').doc(docId).get();
+    const a = doc.data();
+    delete a._tipo; delete a._deletadoEm;
+    await db.collection('alunos').doc(docId).set(a);
+    await db.collection('lixeira').doc(docId).delete();
+    alunos.push(a);
+    renderAll();
+    carregarLixeira();
+  });
+}
+
+async function restaurarQuadro(docId){
+  confirmar('Restaurar este quadro?', async ()=>{
+    const doc = await db.collection('lixeira').doc(docId).get();
+    const q = doc.data();
+    delete q._tipo; delete q._deletadoEm; delete q._id;
+    quadros.push(q);
+    await saveQuadrosDB();
+    await db.collection('lixeira').doc(docId).delete();
+    renderBoard();
+    renderAll();
+    carregarLixeira();
+  });
+}
+
+async function deletarDefinitivo(docId){
+  confirmar('Excluir permanentemente? Esta ação não pode ser desfeita.', async ()=>{
+    await db.collection('lixeira').doc(docId).delete();
+    carregarLixeira();
+  });
 }
 
 // ─────────────── RELATÓRIO FINANCEIRO ───────────────
