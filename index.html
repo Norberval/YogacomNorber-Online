@@ -614,6 +614,12 @@ function confirmar(msg, callback){
 function fecharConfirm(){
   document.getElementById('confirmModal').classList.remove('open');
   _confirmCallback = null;
+  // resetar botão ao padrão
+  const btn = document.getElementById('confirmOkBtn');
+  btn.textContent = 'Excluir';
+  btn.style.background = '';
+  btn.style.color = '';
+  btn.style.border = '';
 }
 
 // ─────────────── SÍMBOLO OM SVG ───────────────
@@ -1674,16 +1680,36 @@ function setAulaDataLixeira(docId, idx, val){
 }
 
 async function restaurarAluno(docId){
-  confirmar('Restaurar este aluno de volta ao board?', async ()=>{
-    const doc = await db.collection('lixeira').doc(docId).get();
-    const a = doc.data();
+  // Criar modal de seleção de quadro
+  const doc = await db.collection('lixeira').doc(docId).get();
+  const a = doc.data();
+
+  // Opções de quadros disponíveis
+  const opcoesQuadros = quadros.map(q=>`<option value="${q.id}"${q.id===a.tipo?' selected':''}>${q.nome}</option>`).join('');
+
+  // Usar o modal de confirmação mas personalizado
+  document.getElementById('confirmMsg').innerHTML = `
+    <div style="margin-bottom:12px;">Restaurar <b>${a.nome}</b> para qual quadro?</div>
+    <select id="destRestaurar" style="width:100%;padding:9px 11px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;">
+      ${opcoesQuadros}
+    </select>`;
+  document.getElementById('confirmOkBtn').textContent = '↩ Restaurar';
+  document.getElementById('confirmOkBtn').style.background = 'var(--green)';
+  document.getElementById('confirmOkBtn').style.color = '#1a1206';
+  document.getElementById('confirmOkBtn').style.border = 'none';
+  document.getElementById('confirmOkBtn').onclick = async ()=>{
+    const destino = document.getElementById('destRestaurar').value;
+    fecharConfirm();
     delete a._tipo; delete a._deletadoEm;
+    a.tipo = destino;
     await db.collection('alunos').doc(docId).set(a);
     await db.collection('lixeira').doc(docId).delete();
     alunos.push(a);
+    renderBoard();
     renderAll();
     carregarLixeira();
-  });
+  };
+  document.getElementById('confirmModal').classList.add('open');
 }
 
 async function restaurarQuadro(docId){
