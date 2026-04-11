@@ -245,6 +245,24 @@ textarea{resize:vertical;min-height:70px;}
 .om-svg-md { width:28px; height:28px; display:inline-block; vertical-align:middle; }
 .btn-ordem{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;padding:1px 3px;line-height:1;transition:color .15s;}
 .btn-ordem:hover{color:var(--gold);}
+.btn-mover{
+  min-width:40px;min-height:40px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+  color:var(--text-muted);
+  font-size:18px;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .15s;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+  flex:1;
+  max-width:60px;
+}
+.btn-mover:hover:not(:disabled){background:var(--gold-dim);color:var(--gold);border-color:var(--gold);}
+.btn-mover:active:not(:disabled){background:var(--gold);color:#1a1206;}
+.drag-over{background:var(--gold-dim)!important;border-radius:8px;transition:background .2s;}
 .btn-step{
   min-width:40px;min-height:44px;
   padding:0 12px;
@@ -793,6 +811,98 @@ function abrirNovoQuadro(){
   openNewModal(id);
 }
 
+// ─────────────── DRAG AND DROP ───────────────
+function ativarDragColunas(){
+  // drag entre colunas (desktop)
+  document.querySelectorAll('.column-cards').forEach(col=>{
+    col.addEventListener('dragover', e=>{
+      e.preventDefault();
+      col.classList.add('drag-over');
+    });
+    col.addEventListener('dragleave', ()=>col.classList.remove('drag-over'));
+    col.addEventListener('drop', e=>{
+      e.preventDefault();
+      col.classList.remove('drag-over');
+      const alunoId  = e.dataTransfer.getData('alunoId');
+      const tipoOrig = e.dataTransfer.getData('alunoTipo');
+      const novoTipo = col.id.replace('cards-','');
+      if(novoTipo !== tipoOrig){
+        moverAlunoParaQuadro(alunoId, novoTipo);
+      } else {
+        // reordenar dentro da mesma coluna
+        const cardAlvo = e.target?.closest('.card');
+        if(cardAlvo){
+          const idAlvo = cardAlvo.getAttribute('data-id');
+          if(idAlvo && idAlvo !== alunoId) trocarOrdemAlunos(alunoId, idAlvo);
+        }
+      }
+    });
+  });
+
+  // drag quadros (desktop) — arrastar pelo cabeçalho
+  document.querySelectorAll('.column').forEach((col, qi)=>{
+    const header = col.querySelector('.column-header');
+    if(!header) return;
+    col.setAttribute('draggable','true');
+    col.setAttribute('data-qidx', qi);
+    col.addEventListener('dragstart', e=>{
+      if(e.target.tagName==='BUTTON') { e.preventDefault(); return; }
+      e.dataTransfer.setData('quadroIdx', qi);
+      col.style.opacity='0.5';
+    });
+    col.addEventListener('dragend', ()=>col.style.opacity='1');
+  });
+
+  document.getElementById('board').addEventListener('dragover', e=>{
+    e.preventDefault();
+    const colAlvo = e.target?.closest('.column');
+    document.querySelectorAll('.column').forEach(c=>c.style.outline='');
+    if(colAlvo) colAlvo.style.outline = `2px solid var(--gold)`;
+  });
+  document.getElementById('board').addEventListener('dragleave', ()=>{
+    document.querySelectorAll('.column').forEach(c=>c.style.outline='');
+  });
+  document.getElementById('board').addEventListener('drop', e=>{
+    e.preventDefault();
+    document.querySelectorAll('.column').forEach(c=>c.style.outline='');
+    const qIdx = e.dataTransfer.getData('quadroIdx');
+    if(!qIdx && qIdx!=='0') return;
+    const colAlvo = e.target?.closest('.column');
+    if(!colAlvo) return;
+    const qIdxAlvo = parseInt(colAlvo.getAttribute('data-qidx'));
+    const qIdxOrig = parseInt(qIdx);
+    if(qIdxAlvo !== qIdxOrig && !isNaN(qIdxAlvo)){
+      [quadros[qIdxOrig], quadros[qIdxAlvo]] = [quadros[qIdxAlvo], quadros[qIdxOrig]];
+      saveQuadros();
+      renderBoard();
+      renderAll();
+      ativarDragColunas();
+    }
+  });
+}
+
+async function moverAlunoParaQuadro(alunoId, novoTipo){
+  const a = alunos.find(x=>x.id===alunoId);
+  if(!a || a.tipo===novoTipo) return;
+  a.tipo = novoTipo;
+  await save(a);
+  renderAll();
+}
+
+async function trocarOrdemAlunos(idA, idB){
+  const a = alunos.find(x=>x.id===idA);
+  const b = alunos.find(x=>x.id===idB);
+  if(!a||!b||a.tipo!==b.tipo) return;
+  const doQuadro = alunos.filter(x=>x.tipo===a.tipo).sort((x,y)=>(x.ordem??999)-(y.ordem??999));
+  const iA = doQuadro.findIndex(x=>x.id===idA);
+  const iB = doQuadro.findIndex(x=>x.id===idB);
+  [doQuadro[iA].ordem, doQuadro[iB].ordem] = [iB, iA];
+  await save(doQuadro[iA]);
+  await save(doQuadro[iB]);
+  renderAll();
+  ativarDragColunas();
+}
+
 // ─────────────── REORDENAÇÃO ───────────────
 function moverQuadro(id, dir){
   const i = quadros.findIndex(q=>q.id===id);
@@ -1003,8 +1113,8 @@ function renderBoard(){
         <span style="font-size:15px;">${q.icone||'📅'}</span>
         <span class="col-title" style="color:${cor};flex:1;">${q.nome}</span>
         <span class="col-count" id="count-${q.id}">0</span>
-        <button class="btn-ordem" onclick="moverQuadro('${q.id}',-1)" title="Mover para esquerda" ${podeSubir?'':'disabled style="opacity:0.2;"'}>◀</button>
-        <button class="btn-ordem" onclick="moverQuadro('${q.id}',1)"  title="Mover para direita" ${podeDescer?'':'disabled style="opacity:0.2;"'}>▶</button>
+        <button class="btn-ordem" onclick="moverQuadro('${q.id}',-1)" title="Mover para esquerda" ${podeSubir?'':'disabled style="opacity:0.2;"'} style="font-size:16px;padding:4px 8px;min-width:32px;min-height:32px;">◀</button>
+        <button class="btn-ordem" onclick="moverQuadro('${q.id}',1)"  title="Mover para direita" ${podeDescer?'':'disabled style="opacity:0.2;"'} style="font-size:16px;padding:4px 8px;min-width:32px;min-height:32px;">▶</button>
         ${deleteBtnHtml}
       </div>
       <div class="column-cards" id="cards-${q.id}"></div>
@@ -1062,6 +1172,8 @@ function renderAll(){
   document.getElementById('statSabados').textContent=alunos.filter(a=>a.tipo==='sabados').length;
   const rec=alunos.filter(a=>a.status==='ativo').reduce((s,a)=>s+(a.valor||0),0);
   document.getElementById('statReceita').textContent='R$'+rec.toLocaleString('pt-BR');
+  // ativar drag and drop após renderizar
+  setTimeout(ativarDragColunas, 50);
 }
 
 function buildCard(a){
@@ -1071,7 +1183,6 @@ function buildCard(a){
   const statusMap={ativo:'status-active',encerrando:'status-ending',novo:'status-new'};
   const statusLabel={ativo:'● Pacote ativo',encerrando:'⚠ Encerrando',novo:'★ Novo'};
 
-  // posição do aluno na coluna
   const doQuadro = alunos.filter(x=>x.tipo===a.tipo).sort((x,y)=>(x.ordem??999)-(y.ordem??999));
   const pos = doQuadro.findIndex(x=>x.id===a.id);
   const podeSubir  = pos > 0;
@@ -1079,6 +1190,74 @@ function buildCard(a){
 
   const div=document.createElement('div');
   div.className='card';
+  div.setAttribute('draggable','true');
+  div.setAttribute('data-id', a.id);
+  div.setAttribute('data-tipo', a.tipo);
+
+  // ── Drag events (desktop)
+  div.addEventListener('dragstart', e=>{
+    e.dataTransfer.setData('alunoId', a.id);
+    e.dataTransfer.setData('alunoTipo', a.tipo);
+    div.style.opacity='0.4';
+  });
+  div.addEventListener('dragend', ()=>{ div.style.opacity='1'; });
+
+  // ── Touch events (iPhone)
+  let touchTimer = null;
+  let isDragging = false;
+  let ghost = null;
+
+  div.addEventListener('touchstart', e=>{
+    isDragging = false;
+    touchTimer = setTimeout(()=>{
+      isDragging = true;
+      ghost = div.cloneNode(true);
+      ghost.style.cssText = `position:fixed;z-index:9000;opacity:0.8;width:${div.offsetWidth}px;pointer-events:none;`;
+      document.body.appendChild(ghost);
+      div.style.opacity = '0.4';
+    }, 500);
+  }, {passive:true});
+
+  div.addEventListener('touchmove', e=>{
+    if(!isDragging) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    if(ghost){
+      ghost.style.left = (t.clientX - div.offsetWidth/2)+'px';
+      ghost.style.top  = (t.clientY - 30)+'px';
+    }
+    // destacar coluna alvo
+    document.querySelectorAll('.column-cards').forEach(c=>c.classList.remove('drag-over'));
+    const el = document.elementFromPoint(t.clientX, t.clientY);
+    const col = el?.closest('.column-cards');
+    if(col) col.classList.add('drag-over');
+  }, {passive:false});
+
+  div.addEventListener('touchend', e=>{
+    clearTimeout(touchTimer);
+    if(!isDragging){ isDragging=false; return; }
+    isDragging = false;
+    if(ghost){ ghost.remove(); ghost=null; }
+    div.style.opacity = '1';
+    document.querySelectorAll('.column-cards').forEach(c=>c.classList.remove('drag-over'));
+    const t = e.changedTouches[0];
+    const el = document.elementFromPoint(t.clientX, t.clientY);
+    const colCards = el?.closest('.column-cards');
+    if(colCards){
+      const novoTipo = colCards.id.replace('cards-','');
+      if(novoTipo !== a.tipo){
+        moverAlunoParaQuadro(a.id, novoTipo);
+      } else {
+        // reordenar dentro da mesma coluna
+        const cardAlvo = el?.closest('.card');
+        if(cardAlvo && cardAlvo !== div){
+          const idAlvo = cardAlvo.getAttribute('data-id');
+          trocarOrdemAlunos(a.id, idAlvo);
+        }
+      }
+    }
+  });
+
   div.innerHTML=`
     <div class="card-banner" style="cursor:pointer;" onclick="openDetail('${a.id}')">
       <div class="card-banner-text">ॐ YôgacomNorber</div>
@@ -1092,11 +1271,11 @@ function buildCard(a){
       </div>
       <div class="card-value">R$: ${(a.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>
     </div>
-    <div style="display:flex;justify-content:flex-end;gap:2px;padding:4px 8px 6px;border-top:1px solid var(--border);">
-      <button class="btn-ordem" onclick="moverAluno('${a.id}',-999)" title="Início" ${podeSubir?'':'disabled style="opacity:0.2;cursor:default;"'}>⇈</button>
-      <button class="btn-ordem" onclick="moverAluno('${a.id}',-1)"   title="Mover para cima" ${podeSubir?'':'disabled style="opacity:0.2;cursor:default;"'}>↑</button>
-      <button class="btn-ordem" onclick="moverAluno('${a.id}',1)"    title="Mover para baixo" ${podeDescer?'':'disabled style="opacity:0.2;cursor:default;"'}>↓</button>
-      <button class="btn-ordem" onclick="moverAluno('${a.id}',999)"  title="Final" ${podeDescer?'':'disabled style="opacity:0.2;cursor:default;"'}>⇊</button>
+    <div style="display:flex;justify-content:center;gap:10px;padding:8px 12px 10px;border-top:1px solid var(--border);">
+      <button class="btn-mover" onclick="moverAluno('${a.id}',-999)" title="Início" ${podeSubir?'':'disabled'} style="${podeSubir?'':'opacity:0.2;cursor:default;'}">⇈</button>
+      <button class="btn-mover" onclick="moverAluno('${a.id}',-1)"   title="Cima"   ${podeSubir?'':'disabled'} style="${podeSubir?'':'opacity:0.2;cursor:default;'}">↑</button>
+      <button class="btn-mover" onclick="moverAluno('${a.id}',1)"    title="Baixo"  ${podeDescer?'':'disabled'} style="${podeDescer?'':'opacity:0.2;cursor:default;'}">↓</button>
+      <button class="btn-mover" onclick="moverAluno('${a.id}',999)"  title="Final"  ${podeDescer?'':'disabled'} style="${podeDescer?'':'opacity:0.2;cursor:default;'}">⇊</button>
     </div>`;
   return div;
 }
