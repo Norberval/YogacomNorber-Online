@@ -1212,6 +1212,7 @@ function buildCard(a){
     touchTimer = setTimeout(()=>{
       isDragging = true;
       ghost = div.cloneNode(true);
+      ghost.className += ' drag-ghost';
       ghost.style.cssText = `position:fixed;z-index:9000;opacity:0.8;width:${div.offsetWidth}px;pointer-events:none;`;
       document.body.appendChild(ghost);
       div.style.opacity = '0.4';
@@ -1237,7 +1238,9 @@ function buildCard(a){
     clearTimeout(touchTimer);
     if(!isDragging){ isDragging=false; return; }
     isDragging = false;
+    // garantir remoção do ghost em qualquer situação
     if(ghost){ ghost.remove(); ghost=null; }
+    document.querySelectorAll('.drag-ghost').forEach(g=>g.remove()); // limpar qualquer ghost perdido
     div.style.opacity = '1';
     document.querySelectorAll('.column-cards').forEach(c=>c.classList.remove('drag-over'));
     const t = e.changedTouches[0];
@@ -1248,7 +1251,6 @@ function buildCard(a){
       if(novoTipo !== a.tipo){
         moverAlunoParaQuadro(a.id, novoTipo);
       } else {
-        // reordenar dentro da mesma coluna
         const cardAlvo = el?.closest('.card');
         if(cardAlvo && cardAlvo !== div){
           const idAlvo = cardAlvo.getAttribute('data-id');
@@ -1256,6 +1258,16 @@ function buildCard(a){
         }
       }
     }
+  });
+
+  // segurança extra: limpar ghost se o toque for cancelado
+  div.addEventListener('touchcancel', ()=>{
+    clearTimeout(touchTimer);
+    isDragging = false;
+    if(ghost){ ghost.remove(); ghost=null; }
+    document.querySelectorAll('.drag-ghost').forEach(g=>g.remove());
+    div.style.opacity = '1';
+    document.querySelectorAll('.column-cards').forEach(c=>c.classList.remove('drag-over'));
   });
 
   div.innerHTML=`
