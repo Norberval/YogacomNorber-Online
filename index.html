@@ -476,6 +476,13 @@ textarea{resize:vertical;min-height:70px;}
         <label>Observações</label>
         <textarea id="f_obs" placeholder="Iniciou em… alergias, preferências…"></textarea>
       </div>
+      <div class="form-group">
+        <label>Data de nascimento</label>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="date" id="f_nascimento" onchange="calcularIdade()" style="flex:1;">
+          <div id="f_idade" style="font-size:13px;color:var(--gold);font-family:'Cormorant Garamond',serif;font-size:16px;white-space:nowrap;min-width:140px;"></div>
+        </div>
+      </div>
       <div class="checklist-section">
         <div class="checklist-title">
           <span>✅ Aulas do pacote</span>
@@ -722,6 +729,30 @@ function omSVG(size){
     " stroke="url(#omGold${s})" stroke-width="2" fill="url(#omGold${s})"/>
   </g>
 </svg>`;
+}
+
+function idadeStr(nascimento){
+  if(!nascimento) return '';
+  const nasc = new Date(nascimento);
+  const hoje = new Date();
+  let anos  = hoje.getFullYear() - nasc.getFullYear();
+  let meses = hoje.getMonth()    - nasc.getMonth();
+  if(meses < 0){ anos--; meses += 12; }
+  if(hoje.getDate() < nasc.getDate()){ meses--; if(meses<0){ anos--; meses+=12; } }
+  return `${anos} anos e ${meses} ${meses===1?'mês':'meses'}`;
+}
+
+function calcularIdade(){
+  const val = document.getElementById('f_nascimento').value;
+  const el  = document.getElementById('f_idade');
+  if(!val){ el.textContent=''; return; }
+  const nasc = new Date(val);
+  const hoje = new Date();
+  let anos  = hoje.getFullYear() - nasc.getFullYear();
+  let meses = hoje.getMonth()    - nasc.getMonth();
+  if(meses < 0){ anos--; meses += 12; }
+  if(hoje.getDate() < nasc.getDate()){ meses--; if(meses<0){ anos--; meses+=12; } }
+  el.textContent = `${anos} anos e ${meses} ${meses===1?'mês':'meses'}`;
 }
 
 function stepField(id, step, min, max){
@@ -1311,6 +1342,8 @@ function openNewModal(tipo){
   document.getElementById('f_dataPag').value=new Date().toISOString().split('T')[0];
   document.getElementById('f_numPacote').value=1;
   document.getElementById('f_obs').value='';
+  document.getElementById('f_nascimento').value='';
+  document.getElementById('f_idade').textContent='';
   document.getElementById('aulaList').innerHTML=''; // limpa DOM antigo
   gerarAulas();
   document.getElementById('newModal').classList.add('open');
@@ -1373,7 +1406,9 @@ async function salvarAluno(){
   const dados={nome,tipo:document.getElementById('f_tipo').value,status:document.getElementById('f_status').value,
     qtdAulas:qtd,valor:parseFloat(document.getElementById('f_valor').value)||0,
     dataPag:document.getElementById('f_dataPag').value,numPacote:parseInt(document.getElementById('f_numPacote').value)||1,
-    obs:document.getElementById('f_obs').value,aulas};
+    obs:document.getElementById('f_obs').value,
+    nascimento:document.getElementById('f_nascimento').value||'',
+    aulas};
   if(editingId){
     const idx=alunos.findIndex(a=>a.id===editingId);
     alunos[idx]={...alunos[idx],...dados};
@@ -1475,6 +1510,7 @@ function openDetail(id){
       <div class="detail-row"><span class="detail-key">Valor</span><span class="detail-val" style="color:var(--gold);font-family:'Cormorant Garamond',serif;font-size:17px;">R$ ${(a.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span></div>
       <div class="detail-row"><span class="detail-key">Data pagamento</span><span class="detail-val">${a.dataPag?fmtDate(a.dataPag):'–'}</span></div>
       ${a.obs?`<div class="detail-row"><span class="detail-key">Obs</span><span class="detail-val" style="font-size:12px;color:var(--text-muted);max-width:260px;text-align:right;">${a.obs}</span></div>`:''}
+      ${a.nascimento?`<div class="detail-row"><span class="detail-key">Nascimento</span><span class="detail-val">${fmtDate(a.nascimento)} &nbsp;<span style="color:var(--gold);font-family:'Cormorant Garamond',serif;">${idadeStr(a.nascimento)}</span></span></div>`:''}
       <div class="progress-detail" style="margin-top:14px;">
         <div class="progress-header"><span style="color:var(--text-muted)">Progresso</span><span style="color:var(--gold);font-weight:600;">${done}/${total} (${pct}%)</span></div>
         <div class="progress-bar" style="height:6px;margin-top:6px;"><div class="progress-fill ${fillClass}" style="width:${pct}%"></div></div>
@@ -1734,6 +1770,8 @@ function editarAluno(){
   document.getElementById('f_dataPag').value=a.dataPag;
   document.getElementById('f_numPacote').value=a.numPacote;
   document.getElementById('f_obs').value=a.obs;
+  document.getElementById('f_nascimento').value=a.nascimento||'';
+  calcularIdade();
   document.getElementById('aulaList').innerHTML=''; // limpa DOM antigo
   gerarAulas();
   document.getElementById('newModal').classList.add('open');
