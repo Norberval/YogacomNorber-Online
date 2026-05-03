@@ -972,16 +972,22 @@ function moverAluno(id, dir){
 
 function excluirQuadro(id){
   const q = quadros.find(x=>x.id===id);
-  const nAlunos = alunos.filter(a=>a.tipo===id).length;
-  const aviso = nAlunos > 0 ? ` (há ${nAlunos} aluno(s) neste quadro que ficará sem quadro)` : '';
+  const alunosDoQuadro = alunos.filter(a=>a.tipo===id);
+  const nAlunos = alunosDoQuadro.length;
+  const aviso = nAlunos > 0 ? ` (${nAlunos} aluno(s) neste quadro serão movidos para a Lixeira)` : '';
   confirmar(
-    `Mover o quadro "${q.nome}" para a lixeira?${aviso}`,
+    `Excluir o quadro "${q.nome}"?${aviso}`,
     async ()=>{
-      await db.collection('lixeira').doc('quadro_'+id).set({
-        ...q,
-        _tipo: 'quadro',
-        _deletadoEm: new Date().toISOString()
-      });
+      // mover alunos do quadro para a lixeira
+      for(const a of alunosDoQuadro){
+        await db.collection('lixeira').doc(a.id).set({
+          ...a,
+          _tipo: 'aluno',
+          _deletadoEm: new Date().toISOString()
+        });
+        await db.collection('alunos').doc(a.id).delete();
+      }
+      alunos = alunos.filter(a=>a.tipo!==id);
       quadros = quadros.filter(x=>x.id!==id);
       saveQuadros();
       renderBoard();
